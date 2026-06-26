@@ -1,13 +1,6 @@
-from classes import InvalidInput, Settings
+from classes import Settings
 import shlex
 from typing import overload, Literal
-
-
-def min_max_inputs(args: list, min: int, max: int) -> None:
-    if len(args) - 1 < min or len(args) - 1 > max:
-        print("maxinput triggered")
-        raise InvalidInput
-
 
 @overload
 def shell_input(settings: Settings, *, string: Literal[False]) -> list[str]: ...
