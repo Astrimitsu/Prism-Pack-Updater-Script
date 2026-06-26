@@ -1,7 +1,7 @@
 from copy import deepcopy
 from classes import Settings
 from instance_config import instance_config
-import readline
+import readline #noqa: F401
 import shlex
 
 

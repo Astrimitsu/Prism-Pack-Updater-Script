@@ -2,8 +2,7 @@ from helpers import min_max_inputs
 from classes import Settings, InvalidInput
 from copy import deepcopy
 from pathlib import Path
-import readline
-
+import readline #noqa: F401
 
 def instance_config(args: list[str], settings: Settings) -> Settings:
     global instance
