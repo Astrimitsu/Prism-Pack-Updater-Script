@@ -1,9 +1,8 @@
 from copy import deepcopy
 from classes import Settings
 from instance_config import instance_config
-import readline #noqa: F401
-import shlex
-
+import readline  # noqa: F401
+from helpers import shell_input
 
 def main() -> None:
 
@@ -15,14 +14,7 @@ def config(settings: Settings) -> None:
     new_settings = deepcopy(settings)
 
     while True:
-        print(settings.instance)
-        try:
-            args: list = shlex.split(input(
-                f"{settings.instance}>" if settings.instance else "> "
-            ).strip('\\/'))
-        except KeyboardInterrupt:
-            print("\n")
-            exit()
+        args = shell_input(settings)
         if args[0] == "instance":
             new_settings = instance_config(args, settings)
         if args[0] == "mod":
