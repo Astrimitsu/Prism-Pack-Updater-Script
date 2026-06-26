@@ -1,5 +1,6 @@
 from classes import InvalidInput, Settings
 import shlex
+from typing import overload, Literal
 
 
 def min_max_inputs(args: list, min: int, max: int) -> None:
@@ -8,7 +9,15 @@ def min_max_inputs(args: list, min: int, max: int) -> None:
         raise InvalidInput
 
 
-def shell_input(settings: Settings) -> list[str]:
+@overload
+def shell_input(settings: Settings, *, string: Literal[False]) -> list[str]: ...
+@overload
+def shell_input(settings: Settings, *, string: Literal[True]) -> str: ...
+@overload
+def shell_input(settings: Settings) -> list[str]: ...
+
+
+def shell_input(settings: Settings, *, string=False) -> list[str] | str:
     try:
         args = shlex.split(
             input(f"{settings.instance}> " if settings.instance else "> ").replace(
@@ -17,5 +26,8 @@ def shell_input(settings: Settings) -> list[str]:
         )
     except KeyboardInterrupt:
         exit()
-    clean_args = [arg.strip(r"\/") for arg in args]
+    if not string:
+        clean_args = [arg.rstrip(r"\/") for arg in args]
+    else:
+        clean_args = " ".join(args).rstrip(r"\/")
     return clean_args

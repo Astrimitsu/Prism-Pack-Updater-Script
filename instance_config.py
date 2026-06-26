@@ -1,4 +1,4 @@
-from helpers import min_max_inputs
+from helpers import min_max_inputs, shell_input
 from classes import Settings, InvalidInput
 from copy import deepcopy
 from pathlib import Path
@@ -53,7 +53,7 @@ instance remove <alias>         Removes an existing instance"""
             print(
                 f"You are about to delete the instance: {args[2]}. Enter 'y' to continue."
             )
-            if input("> ") == "y":
+            if shell_input(settings, string = True) == 'y':
                 del new_settings.config[args[2]]
             return new_settings
         raise InvalidInput
