@@ -3,6 +3,7 @@ import json
 
 class Settings:
     mod_dir = "minecraft/mods"
+
     def __init__(self) -> None:
         try:
             with open("settings.json") as f:
