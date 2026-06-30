@@ -32,7 +32,6 @@ def shell_input(settings: Settings, *, string=False) -> list[str] | str:
             return []
         return [arg.rstrip("\\/") for arg in clean_args]
     else:
-        print(raw_args.rstrip(r"\/"))
         return raw_args.rstrip(r"\/")
 
 
@@ -46,13 +45,13 @@ def glob_tester(raw_path: str) -> int:
 
 
 # test_path should always be ensured to have only one possible result with the glob tester above!
-def glob_duplicate_test(test_path: str, existing_list: list, settings) -> bool:
+def glob_duplicate_test(test_path: str, existing_list: list, settings: Settings) -> bool:
     path = Path(os.path.expandvars(test_path))
 
     def expand_glob(item):
         test_path = Path(item)
         parent, name = Path(test_path.parent), test_path.name
-        if parent.exists:
+        if parent.exists():
             return parent.glob(name)
         else:
             return []
