@@ -15,10 +15,10 @@ class Settings:
             f.write(json.dumps(self.config, indent=4))
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, Settings):
-            return self.config == other.config and self.instance == other.instance
-        else:
+        if not isinstance(other, Settings):
             return NotImplemented
+        return self.config == other.config and self.instance == other.instance
+        
 
 
 class InvalidInput(Exception):

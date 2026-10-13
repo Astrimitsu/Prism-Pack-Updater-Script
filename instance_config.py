@@ -1,8 +1,9 @@
-from helpers import shell_input
-from classes import Settings, InvalidInput
+import os.path
 from copy import deepcopy
 from pathlib import Path
-import os.path
+
+from classes import InvalidInput, Settings
+from helpers import shell_input
 
 
 def instance_config(args: list[str], settings: Settings) -> Settings:
@@ -19,8 +20,8 @@ instance remove <alias>         Removes an existing instance"""
             # display instance list
             case ["instance"]:
                 print("Instances:")
-                for inst in settings.config:
-                    print(inst)
+                for instance in settings.config:
+                    print(instance)
                 return settings
 
             case ["instance", "help"]:

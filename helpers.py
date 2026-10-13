@@ -1,10 +1,11 @@
-from classes import Settings
-import shlex
-from typing import overload, Literal
-import sys
-from pathlib import Path
 import os.path
 import platform
+import shlex
+import sys
+from pathlib import Path
+from typing import Literal, overload
+
+from classes import Settings
 
 if platform.system() == "Linux":
     import readline  # noqa: F401
@@ -38,7 +39,7 @@ def shell_input(settings: Settings, *, string=False) -> list[str] | str:
 def glob_tester(raw_path: str) -> int:
     path = Path(os.path.expandvars(raw_path))
     parent, name = Path(path.parent), path.name
-    # return 0 (does not exist) if attempting to glob inside a file
+    # return 0 if attempting to glob inside a file
     if not parent.is_dir():
         return 0
     return len(list(parent.glob(name)))
@@ -61,9 +62,8 @@ def glob_duplicate_test(test_path: str, existing_list: list, settings: Settings)
         for glob in expand_glob(expand_path(item, settings)):
             if glob:
                 globbed_paths.add(glob)
-    globbed_test_item = []
-    for glob in expand_glob(path):
-        globbed_test_item.append(glob)
+
+    globbed_test_item = list(expand_glob(path))
     return globbed_test_item[0] in globbed_paths
 
 

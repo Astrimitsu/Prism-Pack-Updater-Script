@@ -1,7 +1,7 @@
 from classes import Settings
+from file_config import file_config
 from helpers import shell_input
 from instance_config import instance_config
-from file_config import file_config
 
 
 def config() -> Settings:

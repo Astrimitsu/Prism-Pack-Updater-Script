@@ -1,6 +1,7 @@
-from classes import Settings, InvalidInput
-from helpers import glob_tester, glob_duplicate_test
 from copy import deepcopy
+
+from classes import InvalidInput, Settings
+from helpers import glob_duplicate_test, glob_tester
 
 
 def file_config(args: list[str], settings: Settings) -> Settings:
@@ -32,10 +33,12 @@ manage help                               Display this help text"""
             case ["manage", action_type, action, new_path]:
                 directory = f"minecraft/{new_path.lstrip("\\/")}"
                 full_directory = f"{settings.config[settings.instance]["path"]}/minecraft/{new_path.strip("\\/")}"
+
                 if action_type not in ("additions", "removals"):
                     raise InvalidInput
                 if action not in ("add", "remove"):
                     raise InvalidInput
+                
                 glob_matches = glob_tester(full_directory)
                 if glob_matches == 0:
                     raise FileNotFoundError(f"File at {directory} does not exist")
@@ -60,7 +63,7 @@ manage help                               Display this help text"""
                     if new_path in target_list:
                         target_list.remove(new_path)
                         print(
-                            f"File {action_type[:-1]} at {new_path} has been removed! "
+                            f"File {action_type[:-1]} at {new_path} has been removed!"
                         )
                     else:
                         print(f"File {action_type[:-1]} at {new_path} does not exist")
