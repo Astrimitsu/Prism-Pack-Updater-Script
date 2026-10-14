@@ -45,17 +45,20 @@ def glob_tester(raw_path: str) -> int:
     return len(list(parent.glob(name)))
 
 
-# test_path should always be ensured to have only one possible result with the glob tester above!
-def glob_duplicate_test(test_path: str, existing_list: list, settings: Settings) -> bool:
-    path = Path(os.path.expandvars(test_path))
+def expand_glob(item):
+    test_path = Path(item)
+    parent, name = Path(test_path.parent), test_path.name
+    if parent.exists():
+        return parent.glob(name)
+    else:
+        return []
 
-    def expand_glob(item):
-        test_path = Path(item)
-        parent, name = Path(test_path.parent), test_path.name
-        if parent.exists():
-            return parent.glob(name)
-        else:
-            return []
+
+# test_path should always be ensured to have only one possible result with the glob tester above!
+def glob_duplicate_test(
+    test_path: str, existing_list: list, settings: Settings
+) -> bool:
+    path = Path(os.path.expandvars(test_path))
 
     globbed_paths = set()
     for item in existing_list:
