@@ -2,13 +2,16 @@ import json
 
 
 class Settings:
-    def __init__(self) -> None:
+    def __init__(self, config = None, instance = None) -> None:
+        self.config = config if config else {}
+        self.instance = instance if instance else ""
+
+    def from_disk(self) -> None:
         try:
             with open("settings.json") as f:
                 self.config = json.load(f)
         except FileNotFoundError:
-            self.config = {}
-        self.instance = ""
+            return
 
     def write_to_json(self) -> None:
         with open("settings.json", "w") as f:
@@ -17,7 +20,7 @@ class Settings:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Settings):
             return NotImplemented
-        return self.config == other.config and self.instance == other.instance
+        return vars(self) == vars(other)
         
 
 

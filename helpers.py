@@ -35,9 +35,8 @@ def shell_input(settings: Settings, *, string=False) -> list[str] | str:
     else:
         return raw_args.rstrip(r"\/")
 
-
-def glob_tester(raw_path: str) -> int:
-    path = Path(os.path.expandvars(raw_path))
+#TODO: Implement this earlier in the chain: path = Path(os.path.expandvars(raw_path))
+def glob_counter(path: Path) -> int:
     parent, name = Path(path.parent), path.name
     # return 0 if attempting to glob inside a file
     if not parent.is_dir():
