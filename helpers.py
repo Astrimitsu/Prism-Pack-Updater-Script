@@ -44,11 +44,11 @@ def glob_counter(path: Path) -> int:
     return len(list(parent.glob(name)))
 
 
-def expand_glob(item):
-    test_path = Path(item)
+def expand_glob(path: Path) -> list[Path]:
+    test_path = Path(path)
     parent, name = Path(test_path.parent), test_path.name
     if parent.exists():
-        return parent.glob(name)
+        return list(parent.glob(name))
     else:
         return []
 
@@ -65,9 +65,9 @@ def glob_duplicate_test(
             if glob:
                 globbed_paths.add(glob)
 
-    globbed_test_item = list(expand_glob(path))
+    globbed_test_item = expand_glob(path)
     return globbed_test_item[0] in globbed_paths
 
 
-def expand_path(path: str, settings: Settings) -> str:
-    return f"{settings.config[settings.instance]["path"]}/minecraft/{path.strip("\\/")}"
+def expand_path(path: Path, settings: Settings) -> Path:
+    return Path(settings.config[settings.instance]["path"]) / "minecraft" / Path(path)
