@@ -1,27 +1,70 @@
 import json
+from pathlib import Path
+
+from helpers import assert_glob_single_match, json_serializer_helper
 
 
 class Settings:
-    def __init__(self, config = None, instance = None) -> None:
-        self.config = config if config else {}
+    def __init__(self, config: dict | None = None, instance: str | None = None) -> None:
+        self._config = config if config else {}
         self.instance = instance if instance else ""
+        self.dirty = False
 
-    def from_disk(self) -> None:
+    @staticmethod
+    def from_disk() -> Settings:
         try:
             with open("settings.json") as f:
-                self.config = json.load(f)
+                config = json.load(f)
+            return Settings(config)
         except FileNotFoundError:
-            return
+            return Settings()
+
+    def set_instance(self, alias):
+        if alias not in self._config:
+            raise ValueError(f"Instance {alias} does not exist.")
+        self.instance = alias
+
+    def add_instance(self, path: Path, alias: str | None = None) -> None:
+        if not alias:
+            alias = path.stem
+        if not self.instance_exists(alias):
+            raise ValueError(f"Instance at {alias} already exists")
+        if not (path / "mmc-pack.json").exists():
+            raise ValueError(f"Directory at {path!s} is not a valid Prism instance")
+
+        assert_glob_single_match(path)
+
+        self._config[alias] = {"path": path, "additions": [], "removals": []}
+        self.dirty = True
+
+    def remove_instance(self, alias: str) -> None:
+        if not self.instance_exists(alias):
+            raise ValueError(f"Instance {alias} does not exist.")
+
+        del self._config[alias]
+
+        if self.instance == alias:
+            self.instance = ""
+
+        self.dirty = True
+
+    def instance_exists(self, alias: str) -> bool:
+        return alias in self._config
 
     def write_to_json(self) -> None:
+        if not self.dirty:
+            return
+
         with open("settings.json", "w") as f:
-            f.write(json.dumps(self.config, indent=4))
+            f.write(json.dumps(self._config, indent=4, default=json_serializer_helper))
+
+    def expand_path(self, path: Path) -> Path:
+        return Path(self._config[self.instance]["path"]) / "minecraft" / Path(path)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Settings):
             return NotImplemented
         return vars(self) == vars(other)
-        
 
 
 class InvalidInput(Exception):

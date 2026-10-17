@@ -6,7 +6,6 @@ from instance_config import instance_config
 
 def config() -> Settings:
     settings = Settings()
-    # this should always be overwritten by a deep copy
     new_settings = settings
     syntax = """\
 Usage: 
@@ -16,6 +15,7 @@ manage                      Add or remove files or folders from the pack
 run                         Start migration process
 
 For more help, type the command you want, then 'help'"""
+
     print(syntax)
     while True:
         args = shell_input(settings)
@@ -34,10 +34,7 @@ For more help, type the command you want, then 'help'"""
             case _:
                 print("Unknown command. Type 'help' for help.")
 
-        if new_settings.config != settings.config:
-            new_settings.write_to_json()
-        if settings != new_settings:
-            settings = new_settings
+        settings.write_to_json()
 
     if settings != new_settings:
         settings = new_settings

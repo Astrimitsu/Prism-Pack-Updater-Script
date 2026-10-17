@@ -1,7 +1,7 @@
 from copy import deepcopy
 
 from classes import InvalidInput, Settings
-from helpers import glob_duplicate_test, glob_tester
+from helpers import glob_duplicate_test, glob_counter
 
 
 def file_config(args: list[str], settings: Settings) -> Settings:
@@ -39,7 +39,7 @@ manage help                               Display this help text"""
                 if action not in ("add", "remove"):
                     raise InvalidInput
                 
-                glob_matches = glob_tester(full_directory)
+                glob_matches = glob_counter(full_directory)
                 if glob_matches == 0:
                     raise FileNotFoundError(f"File at {directory} does not exist")
                 if glob_matches > 1:

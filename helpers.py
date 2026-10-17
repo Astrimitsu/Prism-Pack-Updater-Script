@@ -35,7 +35,8 @@ def shell_input(settings: Settings, *, string=False) -> list[str] | str:
     else:
         return raw_args.rstrip(r"\/")
 
-#TODO: Implement this earlier in the chain: path = Path(os.path.expandvars(raw_path))
+
+# TODO: Implement this earlier in the chain: path = Path(os.path.expandvars(raw_path))
 def glob_counter(path: Path) -> int:
     parent, name = Path(path.parent), path.name
     # return 0 if attempting to glob inside a file
@@ -61,7 +62,7 @@ def glob_duplicate_test(
 
     globbed_paths = set()
     for item in existing_list:
-        for glob in expand_glob(expand_path(item, settings)):
+        for glob in expand_glob(settings.expand_path(item)):
             if glob:
                 globbed_paths.add(glob)
 
@@ -69,5 +70,19 @@ def glob_duplicate_test(
     return globbed_test_item[0] in globbed_paths
 
 
-def expand_path(path: Path, settings: Settings) -> Path:
-    return Path(settings.config[settings.instance]["path"]) / "minecraft" / Path(path)
+def assert_glob_single_match(path: Path) -> None:
+    glob_matches = glob_counter(path)
+    if glob_matches == 0:
+        raise FileNotFoundError(f"File at {path} does not exist")
+    if glob_matches > 1:
+        raise ValueError(f"Input {path} resolves to more than one file")
+
+
+def json_serializer_helper(obj: object) -> object:
+    match obj:
+        case Path():
+            return str(obj)
+        case _:
+            raise TypeError(
+                f"Object of type {type(obj).__name__} is not JSON serializable"
+            )
