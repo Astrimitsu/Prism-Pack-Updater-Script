@@ -20,7 +20,7 @@ class Settings:
             return Settings()
 
     def set_instance(self, alias):
-        if alias not in self._config:
+        if not self.instance_exists(alias):
             raise ValueError(f"Instance {alias} does not exist.")
         self.instance = alias
 
@@ -58,7 +58,7 @@ class Settings:
         with open("settings.json", "w") as f:
             f.write(json.dumps(self._config, indent=4, default=json_serializer_helper))
 
-    def expand_path(self, path: Path) -> Path:
+    def path_to_instance_folder(self, path: Path) -> Path:
         return Path(self._config[self.instance]["path"]) / "minecraft" / Path(path)
 
     def __eq__(self, other: object) -> bool:

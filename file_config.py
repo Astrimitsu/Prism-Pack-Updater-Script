@@ -1,7 +1,7 @@
 from copy import deepcopy
 
 from classes import InvalidInput, Settings
-from helpers import glob_duplicate_test, glob_counter
+from helpers import glob_counter, glob_duplicate_test
 
 
 def file_config(args: list[str], settings: Settings) -> Settings:

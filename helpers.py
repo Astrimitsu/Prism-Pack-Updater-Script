@@ -1,7 +1,6 @@
 import os.path
 import platform
 import shlex
-import sys
 from pathlib import Path
 from typing import Literal, overload
 
@@ -20,20 +19,10 @@ def shell_input(settings: Settings) -> list[str]: ...
 
 
 def shell_input(settings: Settings, *, string=False) -> list[str] | str:
-    try:
-        raw_args = input(f"{settings.instance}> " if settings.instance else "> ")
-    except KeyboardInterrupt:
-        print()
-        sys.exit(0)
-    if not string:
-        try:
-            clean_args = shlex.split(raw_args.replace("\\", "\\\\"))
-        except ValueError as e:
-            print(f"Syntax Error: {e}")
-            return []
-        return [arg.rstrip("\\/") for arg in clean_args]
-    else:
-        return raw_args.rstrip(r"\/")
+    raw_args = input(f"{settings.instance}> " if settings.instance else "> ")
+    if string:
+        return raw_args
+    return shlex.split(raw_args.replace("\\", "/"))
 
 
 # TODO: Implement this earlier in the chain: path = Path(os.path.expandvars(raw_path))
@@ -59,15 +48,16 @@ def glob_duplicate_test(
     test_path: str, existing_list: list, settings: Settings
 ) -> bool:
     path = Path(os.path.expandvars(test_path))
+    assert_glob_single_match(path)
+    globbed_test_item = expand_glob(path)[0]
 
-    globbed_paths = set()
-    for item in existing_list:
-        for glob in expand_glob(settings.expand_path(item)):
-            if glob:
-                globbed_paths.add(glob)
+    globbed_paths = {
+        glob
+        for item in existing_list
+        for glob in expand_glob(settings.path_to_instance_folder(item))
+    }
 
-    globbed_test_item = expand_glob(path)
-    return globbed_test_item[0] in globbed_paths
+    return globbed_test_item in globbed_paths
 
 
 def assert_glob_single_match(path: Path) -> None:
