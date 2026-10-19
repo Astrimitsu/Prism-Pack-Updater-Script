@@ -2,9 +2,9 @@ import os.path
 import platform
 import shlex
 from pathlib import Path
-from typing import Literal, overload
+from typing import Literal, overload, Any
 
-from Settings import Settings
+from settings import Settings
 
 if platform.system() == "Linux":
     import readline  # noqa: F401
@@ -25,7 +25,14 @@ def shell_input(settings: Settings, *, string=False) -> list[str] | str:
     return shlex.split(raw_args.replace("\\", "/"))
 
 
-# TODO: Implement this earlier in the chain: path = Path(os.path.expandvars(raw_path))
+def path_preprocessor(raw_args: list[Any], args_to_convert: list[int]):
+    new_args = raw_args.copy()
+    for i in args_to_convert:
+        new_args[i] = Path(os.path.expandvars(raw_args[i]))
+    return new_args
+
+
+# TODO: Implement this earlier in the chain: path =
 def glob_counter(path: Path) -> int:
     parent, name = Path(path.parent), path.name
     # return 0 if attempting to glob inside a file

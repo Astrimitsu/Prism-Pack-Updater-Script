@@ -1,6 +1,5 @@
 from helpers import assert_glob_single_match, json_serializer_helper
 
-
 import json
 from pathlib import Path
 
@@ -41,7 +40,8 @@ class Settings:
             raise ValueError(f"Instance {alias} does not exist.")
         self.instance = alias
 
-    def add_instance(self, path: Path, alias: str | None = None) -> None:
+    def add_instance(self, raw_path: str, alias: str | None = None) -> None:
+        path = Path(raw_path)
         if not alias:
             alias = path.stem
         if not self.instance_exists(alias):
@@ -64,6 +64,10 @@ class Settings:
             self.instance = ""
 
         self.dirty = True
+
+    def add_file(self, file: str):
+        pass
+
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Settings):

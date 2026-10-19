@@ -1,11 +1,13 @@
 from collections.abc import Callable
 from typing import NamedTuple
 
-from Settings import Settings
+from settings import Settings
 
 
 class Command(NamedTuple):
-    path: list[str]
+    path: tuple[str, ...]
+    preprocessor_fn: tuple[Callable, ...] | None
+    preprocessor_args: tuple[tuple, ...] | None
     fn: Callable | None
     help: str
 
@@ -13,36 +15,46 @@ class Command(NamedTuple):
 def build_commands(settings: Settings) -> list:
     return [
         Command(
-            ["instance"],
+            ("instance",),
+            None,
+            None,
             settings.get_instances,
             "instance\nDisplay all active instances",
         ),
         Command(
-            ["instance", "set"],
+            ("instance", "set"),
+            None,
+            None,
             settings.set_instance,
             "instance set <alias>\nSet current instance",
         ),
         Command(
-            ["instance", "add"],
+            ("instance", "add"),
+            None,
+            None,
             settings.add_instance,
             "instance add <path> [alias]\nAdds a new instance, alias defaults to folder name if not specified. Path must be surrounded by quotes.",
         ),
         Command(
-            ["instance", "remove"],
+            ("instance", "remove"),
+            None,
+            None,
             settings.remove_instance,
             "instance remove <alias>\nRemoves an existing instance"
         )
     ]
 
-def add_list_to_command_trie(trie: dict, commands: list):
+def add_list_to_command_trie(trie: dict, commands: list[Command]):
     for command in commands:
-        tree_path = trie
+        trie_path = trie
         for command_part in command.path:
-            if command_part not in tree_path:
-                tree_path[command_part] = {}
-            tree_path = tree_path[command_part]
-        tree_path["fn"] = command.fn
-        tree_path["help"] = command.help
+            if command_part not in trie_path:
+                trie_path[command_part] = {}
+            trie_path = trie_path[command_part]
+        for key, value in command._asdict().items():
+            if key == "path":
+                continue
+            trie_path[key] = value
 
 def build_command_trie(settings: Settings) -> dict:
     command_trie: dict = {}

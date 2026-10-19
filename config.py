@@ -1,6 +1,5 @@
-from settings import settings
-from file_config import file_config
 from helpers import shell_input
+from settings import Settings
 
 
 def config() -> Settings:
@@ -18,23 +17,9 @@ For more help, type the command you want, then 'help'"""
     print(syntax)
     while True:
         args = shell_input(settings)
-        match args:
-            case ["help"]:
-                print(syntax)
-            case ["instance", *_]:
-                new_settings = instance_config(args, settings)
-            case ["manage", *_]:
-                new_settings = file_config(args, settings)
-            case ["run"]:
-                if settings.instance:
-                    break
-                else:
-                    print("Instance not set: Create and set instance first")
-            case _:
-                print("Unknown command. Type 'help' for help.")
 
         settings.write_to_json()
 
     if settings != new_settings:
         settings = new_settings
-    return settings    
+    return settings

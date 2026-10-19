@@ -1,4 +1,4 @@
-from Settings import Settings
+from settings import Settings
 
 
 def file_manager(settings: Settings) -> None:
