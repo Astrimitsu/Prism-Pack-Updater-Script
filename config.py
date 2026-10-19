@@ -1,4 +1,4 @@
-from classes import Settings
+from settings import settings
 from file_config import file_config
 from helpers import shell_input
 

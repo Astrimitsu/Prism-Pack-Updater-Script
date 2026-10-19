@@ -1,6 +1,6 @@
 import sys
 
-from classes import Settings
+from Settings import Settings
 from config import config
 from file_manager import file_manager
 

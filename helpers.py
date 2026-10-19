@@ -4,7 +4,7 @@ import shlex
 from pathlib import Path
 from typing import Literal, overload
 
-from classes import Settings
+from Settings import Settings
 
 if platform.system() == "Linux":
     import readline  # noqa: F401
