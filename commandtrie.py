@@ -12,8 +12,8 @@ class Command(NamedTuple):
     help: str
 
 
-def build_commands(settings: Settings) -> list:
-    return [
+def build_commands(settings: Settings) -> tuple[Command, ...]:
+    return (
         Command(
             ("instance",),
             None,
@@ -42,9 +42,10 @@ def build_commands(settings: Settings) -> list:
             settings.remove_instance,
             "instance remove <alias>\nRemoves an existing instance"
         )
-    ]
+    )
 
-def add_list_to_command_trie(trie: dict, commands: list[Command]):
+def add_list_to_command_trie(trie: dict, commands: tuple[Command, ...]):
+    command_fields = [f for f in Command._fields if f != "path"]
     for command in commands:
         trie_path = trie
         for command_part in command.path:
