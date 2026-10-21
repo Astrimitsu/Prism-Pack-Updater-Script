@@ -1,3 +1,4 @@
+from collections import defaultdict
 from collections.abc import Callable
 from typing import NamedTuple
 
@@ -10,6 +11,19 @@ class Command(NamedTuple):
     preprocessor_args: tuple[tuple, ...] | None
     fn: Callable | None
     help: str
+
+    def iter_treenode_properties(self):
+        yield from ((k, v)for k, v in self._asdict().items() if k != "path")
+
+
+class TrieNode:
+    def __init__(self, preprocessor_fn: tuple[Callable, ...] | None = None, preprocessor_args: tuple[tuple, ...] | None = None, fn: Callable | None = None) -> None:
+        self.subcommands: defaultdict[str, TrieNode] |None = None
+        self.preprocessor_fn: tuple[Callable, ...] | None = preprocessor_fn
+        self.preprocessor_args: tuple[tuple, ...] | None = preprocessor_args
+        self.fn: Callable | None = self.fn
+        self.help: str = self.help
+        
 
 
 def build_commands(settings: Settings) -> tuple[Command, ...]:
@@ -40,9 +54,10 @@ def build_commands(settings: Settings) -> tuple[Command, ...]:
             None,
             None,
             settings.remove_instance,
-            "instance remove <alias>\nRemoves an existing instance"
-        )
+            "instance remove <alias>\nRemoves an existing instance",
+        ),
     )
+
 
 def add_list_to_command_trie(trie: dict, commands: tuple[Command, ...]):
     command_fields = [f for f in Command._fields if f != "path"]
@@ -52,10 +67,9 @@ def add_list_to_command_trie(trie: dict, commands: tuple[Command, ...]):
             if command_part not in trie_path:
                 trie_path[command_part] = {}
             trie_path = trie_path[command_part]
-        for key, value in command._asdict().items():
-            if key == "path":
-                continue
-            trie_path[key] = value
+        for field, value in zip(command_fields, command):
+            trie_path[field] = value
+
 
 def build_command_trie(settings: Settings) -> dict:
     command_trie: dict = {}
