@@ -1,25 +1,23 @@
-import os.path
+import os
 import platform
 import shlex
 from pathlib import Path
 from typing import Any, Literal, overload
-
-from settings import Settings
 
 if platform.system() == "Linux":
     import readline  # noqa: F401
 
 
 @overload
-def shell_input(settings: Settings, *, string: Literal[False]) -> list[str]: ...
+def shell_input(prompt: str, *, string: Literal[False]) -> list[str]: ...
 @overload
-def shell_input(settings: Settings, *, string: Literal[True]) -> str: ...
+def shell_input(prompt: str, *, string: Literal[True]) -> str: ...
 @overload
-def shell_input(settings: Settings) -> list[str]: ...
+def shell_input(prompt: str) -> list[str]: ...
 
 
-def shell_input(settings: Settings, *, string=False) -> list[str] | str:
-    raw_args = input(f"{settings.instance}> " if settings.instance else "> ")
+def shell_input(prompt: str = "", *, string=False) -> list[str] | str:
+    raw_args = input(f"{prompt}> ")
     if string:
         return raw_args
     return shlex.split(raw_args.replace("\\", "/"))
@@ -50,21 +48,10 @@ def expand_glob(path: Path) -> list[Path]:
         return []
 
 
-# test_path should always be ensured to have only one possible result with the glob tester above!
-def glob_duplicate_test(
-    test_path: str, existing_list: list, settings: Settings
-) -> bool:
-    path = Path(os.path.expandvars(test_path))
-    assert_glob_single_match(path)
-    globbed_test_item = expand_glob(path)[0]
-
-    globbed_paths = {
-        glob
-        for item in existing_list
-        for glob in expand_glob(settings.path_to_instance_folder(item))
-    }
-
-    return globbed_test_item in globbed_paths
+def check_glob_collisions(a: Path, b: Path) -> bool:
+    globbed_a: set[Path] = set(expand_glob(Path(os.path.expandvars(a))))
+    globbed_b: set[Path] = set(expand_glob(Path(os.path.expandvars(b))))
+    return not globbed_a.isdisjoint(globbed_b)
 
 
 def assert_glob_single_match(path: Path) -> None:

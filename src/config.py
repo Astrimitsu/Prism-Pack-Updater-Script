@@ -16,7 +16,7 @@ For more help, type the command you want, then 'help'"""
 
     print(syntax)
     while True:
-        args = shell_input(settings)
+        args = shell_input(settings.instance)
 
         settings.write_to_json()
 

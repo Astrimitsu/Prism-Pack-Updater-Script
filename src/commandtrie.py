@@ -1,3 +1,4 @@
+import sys
 from collections import defaultdict
 from collections.abc import Callable, Iterator
 from typing import Any, NamedTuple
@@ -24,24 +25,42 @@ class TrieNode:
         fn: Callable | None = None,
         help: str | None = None,
     ) -> None:
-        self.subcommands: defaultdict[str, TrieNode] | None = None
+        self.subcommands: defaultdict[str, TrieNode] | frozendict[str, TrieNode] = (
+            defaultdict(TrieNode)
+        )
         self.preprocessor_fn: tuple[Callable, ...] | None = preprocessor_fn
         self.preprocessor_args: tuple[tuple, ...] | None = preprocessor_args
         self.fn: Callable | None = fn
         self.help: str | None = help
+        self._frozen = False
 
     def add_command_to_trie(self, command: Command) -> None:
         current: TrieNode = self
         for command_part in command.path:
-            if current.subcommands is None:
-                current.subcommands = defaultdict(TrieNode)
             current = current.subcommands[command_part]
         for k, v in command.trienode_properties():
             setattr(current, k, v)
 
+    def _deepfreeze(self) -> None:
+        for node in self.subcommands.values():
+            node._deepfreeze()
+        self.subcommands = frozendict(self.subcommands)
+        self._frozen = True
+
+    def __setattr__(self, key, value):
+        if getattr(self, "_frozen", False):
+            raise AttributeError(f"Cannot modify frozen {self.__class__.__name__}")
+        super().__setattr__(key, value)
+
+    def __delattr__(self, name: str) -> None:
+        if getattr(self, "_frozen", False):
+            raise AttributeError(f"Cannot modify frozen {self.__class__.__name__}")
+        super().__delattr__(name)
+
 
 def build_commands(settings: Settings) -> tuple[Command, ...]:
     return (
+        Command(("quit",), None, None, lambda *args: sys.exit(0), "Exit the program"),
         Command(
             ("instance",),
             None,
@@ -72,8 +91,10 @@ def build_commands(settings: Settings) -> tuple[Command, ...]:
         ),
     )
 
+
 def build_command_trie(settings: Settings) -> TrieNode:
     command_trie: TrieNode = TrieNode()
     for command in build_commands(settings):
         command_trie.add_command_to_trie(command)
+    command_trie._deepfreeze()
     return command_trie
