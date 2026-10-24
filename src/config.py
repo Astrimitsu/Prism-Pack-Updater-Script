@@ -3,8 +3,7 @@ from settings import Settings
 
 
 def config() -> Settings:
-    settings = Settings()
-    new_settings = settings
+    settings = Settings.from_disk()
     syntax = """\
 Usage: 
 help                        Display this help text
@@ -19,7 +18,3 @@ For more help, type the command you want, then 'help'"""
         args = shell_input(settings.instance)
 
         settings.write_to_json()
-
-    if settings != new_settings:
-        settings = new_settings
-    return settings
