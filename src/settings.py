@@ -5,7 +5,7 @@ from helpers import assert_glob_single_match, json_serializer_helper
 
 
 class Settings:
-    def __init__(self, config: dict | None = None, instance: str | None = None) -> None:
+    def __init__(self, config: dict | None = None, instance: str = "") -> None:
         self._config = config if config else {}
         self.instance = instance if instance else ""
         self.dirty = False

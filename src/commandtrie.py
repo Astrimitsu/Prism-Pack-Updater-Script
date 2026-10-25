@@ -58,6 +58,7 @@ class TrieNode:
         super().__delattr__(name)
 
 
+
 def build_commands(settings: Settings) -> tuple[Command, ...]:
     return (
         Command(("quit",), None, None, lambda *args: sys.exit(0), "Exit the program"),
@@ -91,10 +92,13 @@ def build_commands(settings: Settings) -> tuple[Command, ...]:
         ),
     )
 
+def trie_from_commands(commands: list[Command]) -> TrieNode:
+    trie: TrieNode = TrieNode()
+    for command in commands:
+        trie.add_command_to_trie(command)
+    return trie
 
 def build_command_trie(settings: Settings) -> TrieNode:
-    command_trie: TrieNode = TrieNode()
-    for command in build_commands(settings):
-        command_trie.add_command_to_trie(command)
-    command_trie._deepfreeze()
-    return command_trie
+    commands: list[Command] = []
+    commands.extend(build_commands(settings))
+    return trie_from_commands(commands)
