@@ -1,9 +1,12 @@
+import pytest
+
 from src.commandtrie import Command, TrieNode, trie_from_commands
 
 
 class TestBuildCommandTrie:
 
-    def dummy_tree(self):
+    @pytest.fixture
+    def commands(self):
         return (
             Command(("a",), None, None, None, ""),
             Command(("a", "a"), None, None, repr, "text"),
@@ -11,8 +14,7 @@ class TestBuildCommandTrie:
             Command(("c",), None, None, dict, "make a dict or something"),
         )
 
-    def test_trie_from_commands(self):
-        commands = list(self.dummy_tree())
+    def test_build_command_trie(self, commands):
         trie = trie_from_commands(commands)
         trie._deepfreeze()
         for command in commands:
