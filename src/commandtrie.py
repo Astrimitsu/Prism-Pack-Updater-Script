@@ -1,20 +1,22 @@
 import sys
 from collections import defaultdict
 from collections.abc import Callable, Iterator
-from typing import Any, NamedTuple
+from dataclasses import dataclass, field
+from typing import Any
 
 from settings import Settings
 
 
-class Command(NamedTuple):
+@dataclass(frozen=True)
+class Command:
     path: tuple[str, ...]
-    preprocessor_fn: tuple[Callable, ...] | None
-    preprocessor_args: tuple[tuple, ...] | None
-    fn: Callable | None
-    help: str
+    fn: Callable | None = None
+    help: str = ""
+    preprocessor_fn: tuple[Callable, ...] = field(default_factory=tuple)
+    preprocessor_args: tuple[tuple, ...] = field(default_factory=tuple)
 
     def trienode_properties(self) -> Iterator[tuple[str, Any]]:
-        yield from ((k, v) for k, v in self._asdict().items() if k != "path")
+        yield from ((k, v) for k, v in vars(self).items() if k != "path")
 
 
 class TrieNode:
@@ -29,7 +31,7 @@ class TrieNode:
             defaultdict(TrieNode)
         )
         self.preprocessor_fn: tuple[Callable, ...] | None = preprocessor_fn
-        self.preprocessor_args: tuple[tuple, ...] | None = preprocessor_args
+        self.preprocessor_args: tuple[tuple[Any], ...] | None = preprocessor_args
         self.fn: Callable | None = fn
         self.help: str | None = help
         self._frozen = False
@@ -58,45 +60,38 @@ class TrieNode:
         super().__delattr__(name)
 
 
-
 def build_commands(settings: Settings) -> tuple[Command, ...]:
     return (
-        Command(("quit",), None, None, lambda *args: sys.exit(0), "Exit the program"),
+        Command(("quit",), lambda *args: sys.exit(0), "Exit the program"),
         Command(
             ("instance",),
-            None,
-            None,
             settings.get_instances,
             "instance\nDisplay all active instances",
         ),
         Command(
             ("instance", "set"),
-            None,
-            None,
             settings.set_instance,
             "instance set <alias>\nSet current instance",
         ),
         Command(
             ("instance", "add"),
-            None,
-            None,
             settings.add_instance,
             "instance add <path> [alias]\nAdds a new instance, alias defaults to folder name if not specified. Path must be surrounded by quotes.",
         ),
         Command(
             ("instance", "remove"),
-            None,
-            None,
             settings.remove_instance,
             "instance remove <alias>\nRemoves an existing instance",
         ),
     )
+
 
 def trie_from_commands(commands: list[Command]) -> TrieNode:
     trie: TrieNode = TrieNode()
     for command in commands:
         trie.add_command_to_trie(command)
     return trie
+
 
 def build_command_trie(settings: Settings) -> TrieNode:
     commands: list[Command] = []
