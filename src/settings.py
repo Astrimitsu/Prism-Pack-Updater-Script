@@ -1,20 +1,22 @@
 import json
 from pathlib import Path
 
-from helpers import assert_glob_single_match, json_serializer_helper
+from helpers import assert_glob_single_match
+from json_helpers import json_serializer_helper, settings_json_postprocessor
 
 
 class Settings:
-    def __init__(self, config: dict | None = None, instance: str = "") -> None:
+    def __init__(self, config: dict | None = None, instance: str | None = None) -> None:
         self._config = config if config else {}
-        self.instance = instance if instance else ""
+        self.instance = instance
         self.dirty = False
 
     @staticmethod
-    def from_disk() -> Settings:
+    def from_disk(path: Path) -> Settings:
         try:
-            with open("settings.json") as f:
+            with open(path) as f:
                 config = json.load(f)
+            settings_json_postprocessor(config)
             return Settings(config)
         except FileNotFoundError:
             return Settings()
@@ -61,13 +63,12 @@ class Settings:
         del self._config[alias]
 
         if self.instance == alias:
-            self.instance = ""
+            self.instance = None
 
         self.dirty = True
 
     def add_file(self, file: str):
         pass
-
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Settings):

@@ -62,11 +62,4 @@ def assert_glob_single_match(path: Path) -> None:
         raise ValueError(f"Input {path} resolves to more than one file")
 
 
-def json_serializer_helper(obj: object) -> object:
-    match obj:
-        case Path():
-            return str(obj)
-        case _:
-            raise TypeError(
-                f"Object of type {type(obj).__name__} is not JSON serializable"
-            )
+        

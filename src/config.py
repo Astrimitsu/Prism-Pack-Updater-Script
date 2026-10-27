@@ -1,9 +1,11 @@
+from pathlib import Path
+
 from helpers import shell_input
 from settings import Settings
 
 
 def config() -> Settings:
-    settings = Settings.from_disk()
+    settings = Settings.from_disk(Path("settings.json"))
     syntax = """\
 Usage: 
 help                        Display this help text
