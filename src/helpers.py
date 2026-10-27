@@ -1,20 +1,21 @@
 import os
 import platform
 import shlex
-import str_templates
 from pathlib import Path
 from typing import Any, Literal, overload
+
+import str_templates
 
 if platform.system() == "Linux":
     import readline  # noqa: F401
 
 
 @overload
-def shell_input(prompt: str, *, string: Literal[False]) -> list[str]: ...
+def shell_input(prompt: str | None, *, string: Literal[False]) -> list[str]: ...
 @overload
-def shell_input(prompt: str, *, string: Literal[True]) -> str: ...
+def shell_input(prompt: str | None, *, string: Literal[True]) -> str: ...
 @overload
-def shell_input(prompt: str) -> list[str]: ...
+def shell_input(prompt: str | None) -> list[str]: ...
 
 
 def shell_input(prompt: str | None = None, *, string=False) -> list[str] | str:

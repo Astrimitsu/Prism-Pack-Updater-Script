@@ -8,7 +8,7 @@ from json_helpers import json_serializer_helper, settings_json_postprocessor
 
 
 class Settings:
-    def __init__(self, config: dict| None = None, instance: str | None = None) -> None:
+    def __init__(self, config: dict | None = None, instance: str | None = None) -> None:
         self._config: dict[str, Instance] = config if config else {}
         self.instance: str | None = instance
         self.dirty: bool = False
@@ -53,7 +53,9 @@ class Settings:
         if self.instance_exists(alias):
             raise ValueError(str_templates.ERR_INSTANCE_EXISTS.format(alias))
         if (path / "mmc-pack.json").exists():
-            raise ValueError(str_templates.ERR_PATH_NOT_PRISM_INSTANCE.format(str(path)))
+            raise ValueError(
+                str_templates.ERR_PATH_NOT_PRISM_INSTANCE.format(str(path))
+            )
 
         assert_glob_single_match(path)
 

@@ -101,4 +101,6 @@ def trie_from_commands(commands: list[Command]) -> TrieNode:
 def build_command_trie(settings: Settings) -> TrieNode:
     commands: list[Command] = []
     commands.extend(build_commands(settings))
-    return trie_from_commands(commands)
+    trie = trie_from_commands(commands)
+    trie._deepfreeze()
+    return trie

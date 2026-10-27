@@ -10,7 +10,7 @@ class Instance:
     removals: list[Path] = field(default_factory=list)
 
     @staticmethod
-    def from_json(json_instance: dict[str, Any]):
+    def from_json(json_instance: dict[str, Any]) -> Instance:
         path: Path = Path(json_instance["path"])
         additions = [Path(addition) for addition in json_instance["additions"]]
         removals = [Path(removal) for removal in json_instance["removals"]]
