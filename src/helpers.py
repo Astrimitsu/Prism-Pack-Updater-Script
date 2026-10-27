@@ -1,6 +1,7 @@
 import os
 import platform
 import shlex
+import str_templates
 from pathlib import Path
 from typing import Any, Literal, overload
 
@@ -16,8 +17,8 @@ def shell_input(prompt: str, *, string: Literal[True]) -> str: ...
 def shell_input(prompt: str) -> list[str]: ...
 
 
-def shell_input(prompt: str = "", *, string=False) -> list[str] | str:
-    raw_args = input(f"{prompt}> ")
+def shell_input(prompt: str | None = None, *, string=False) -> list[str] | str:
+    raw_args = input(f"{prompt if prompt else ""}> ")
     if string:
         return raw_args
     return shlex.split(raw_args.replace("\\", "/"))
@@ -30,12 +31,10 @@ def path_preprocessor(raw_args: list[Any], args_to_convert: list[int]):
     return new_args
 
 
-# TODO: Implement this earlier in the chain: path =
 def glob_counter(path: Path) -> int:
     parent, name = Path(path.parent), path.name
-    # return 0 if attempting to glob inside a file
     if not parent.is_dir():
-        return 0
+        raise NotADirectoryError(str_templates.ERR_NOT_DIRECTORY.format(path))
     return len(list(parent.glob(name)))
 
 
@@ -57,9 +56,6 @@ def check_glob_collisions(a: Path, b: Path) -> bool:
 def assert_glob_single_match(path: Path) -> None:
     glob_matches = glob_counter(path)
     if glob_matches == 0:
-        raise FileNotFoundError(f"File at {path} does not exist")
+        raise FileNotFoundError(str_templates.ERR_FILE_NOT_EXIST.format(path))
     if glob_matches > 1:
-        raise ValueError(f"Input {path} resolves to more than one file")
-
-
-        
+        raise ValueError(str_templates.ERR_GLOB_TOO_MANY_MATCHES.format(path))

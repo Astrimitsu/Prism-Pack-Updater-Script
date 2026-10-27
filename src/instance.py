@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -6,8 +6,8 @@ from typing import Any
 @dataclass
 class Instance:
     path: Path
-    additions: list[Path]
-    removals: list[Path]
+    additions: list[Path] = field(default_factory=list)
+    removals: list[Path] = field(default_factory=list)
 
     @staticmethod
     def from_json(json_instance: dict[str, Any]):

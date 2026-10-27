@@ -1,15 +1,17 @@
 import json
 from pathlib import Path
 
+import str_templates
 from helpers import assert_glob_single_match
+from instance import Instance
 from json_helpers import json_serializer_helper, settings_json_postprocessor
 
 
 class Settings:
-    def __init__(self, config: dict | None = None, instance: str | None = None) -> None:
-        self._config = config if config else {}
-        self.instance = instance
-        self.dirty = False
+    def __init__(self, config: dict| None = None, instance: str | None = None) -> None:
+        self._config: dict[str, Instance] = config if config else {}
+        self.instance: str | None = instance
+        self.dirty: bool = False
 
     @staticmethod
     def from_disk(path: Path) -> Settings:
@@ -35,30 +37,32 @@ class Settings:
             f.write(json.dumps(self._config, indent=4, default=json_serializer_helper))
 
     def path_to_instance_folder(self, path: Path) -> Path:
-        return Path(self._config[self.instance]["path"]) / "minecraft" / Path(path)
+        if self.instance:
+            return Path(self._config[self.instance].path) / "minecraft" / Path(path)
+        raise AttributeError(str_templates.ERR_INSTANCE_NOT_SET_WHEN_GETTING_PATH)
 
     def set_instance(self, alias):
         if not self.instance_exists(alias):
-            raise ValueError(f"Instance {alias} does not exist.")
+            raise ValueError(str_templates.ERR_INSTANCE_NONEXISTENT.format(alias))
         self.instance = alias
 
     def add_instance(self, raw_path: str, alias: str | None = None) -> None:
         path = Path(raw_path)
         if not alias:
             alias = path.stem
-        if not self.instance_exists(alias):
-            raise ValueError(f"Instance at {alias} already exists")
-        if not (path / "mmc-pack.json").exists():
-            raise ValueError(f"Directory at {path!s} is not a valid Prism instance")
+        if self.instance_exists(alias):
+            raise ValueError(str_templates.ERR_INSTANCE_EXISTS.format(alias))
+        if (path / "mmc-pack.json").exists():
+            raise ValueError(str_templates.ERR_PATH_NOT_PRISM_INSTANCE.format(str(path)))
 
         assert_glob_single_match(path)
 
-        self._config[alias] = {"path": path, "additions": [], "removals": []}
+        self._config[alias] = Instance(path)
         self.dirty = True
 
     def remove_instance(self, alias: str) -> None:
         if not self.instance_exists(alias):
-            raise ValueError(f"Instance {alias} does not exist.")
+            raise ValueError(str_templates.ERR_INSTANCE_NONEXISTENT.format(alias))
 
         del self._config[alias]
 

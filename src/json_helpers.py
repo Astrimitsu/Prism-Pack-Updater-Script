@@ -1,5 +1,7 @@
 from pathlib import Path
+
 from instance import Instance
+
 
 def json_serializer_helper(obj: object) -> object:
     match obj:
