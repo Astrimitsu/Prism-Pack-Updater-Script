@@ -15,3 +15,6 @@ class Instance:
         additions = [Path(addition) for addition in json_instance["additions"]]
         removals = [Path(removal) for removal in json_instance["removals"]]
         return Instance(path, additions, removals)
+
+    def to_json(self):
+        return self.__dict__

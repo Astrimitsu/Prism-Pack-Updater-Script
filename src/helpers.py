@@ -19,7 +19,7 @@ def shell_input(prompt: str | None) -> list[str]: ...
 
 
 def shell_input(prompt: str | None = None, *, string=False) -> list[str] | str:
-    raw_args = input(f"{prompt if prompt else ""}> ")
+    raw_args = input(f"{prompt if prompt else ""}> ").strip()
     if string:
         return raw_args
     return shlex.split(raw_args.replace("\\", "/"))

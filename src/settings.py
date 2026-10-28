@@ -41,7 +41,7 @@ class Settings:
             return Path(self._config[self.instance].path) / "minecraft" / Path(path)
         raise AttributeError(str_templates.ERR_INSTANCE_NOT_SET_WHEN_GETTING_PATH)
 
-    def set_instance(self, alias):
+    def set_instance(self, alias: str) -> None:
         if not self.instance_exists(alias):
             raise ValueError(str_templates.ERR_INSTANCE_NONEXISTENT.format(alias))
         self.instance = alias

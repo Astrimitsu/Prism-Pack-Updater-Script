@@ -11,9 +11,8 @@ if sys.version_info < (3, 15, 0):  # noqa: UP036
 
 
 def main() -> None:
-    while True:
-        settings: Settings = config()
-        file_manager(settings)
+    settings: Settings = config()
+    file_manager(settings)
 
 
 if __name__ == "__main__":

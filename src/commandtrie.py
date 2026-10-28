@@ -22,18 +22,22 @@ class Command:
 class TrieNode:
     def __init__(
         self,
+        fn: Callable | None = None,
+        help: str = "",
         preprocessor_fn: tuple[Callable, ...] | None = None,
         preprocessor_args: tuple[tuple, ...] | None = None,
-        fn: Callable | None = None,
-        help: str | None = None,
     ) -> None:
         self.subcommands: defaultdict[str, TrieNode] | frozendict[str, TrieNode] = (
             defaultdict(TrieNode)
         )
-        self.preprocessor_fn: tuple[Callable, ...] | None = preprocessor_fn
-        self.preprocessor_args: tuple[tuple[Any], ...] | None = preprocessor_args
         self.fn: Callable | None = fn
         self.help: str | None = help
+        self.preprocessor_fn: tuple[Callable, ...] = (
+            preprocessor_fn if preprocessor_fn else ()
+        )
+        self.preprocessor_args: tuple[tuple[Any], ...] = (
+            preprocessor_args if preprocessor_args else ()
+        )
         self._frozen = False
 
     def add_command_to_trie(self, command: Command) -> None:
