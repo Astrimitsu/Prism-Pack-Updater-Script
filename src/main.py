@@ -1,6 +1,6 @@
 import sys
 
-from config import config
+from config import command_parser
 from file_manager import file_manager
 from settings import Settings
 
@@ -11,7 +11,7 @@ if sys.version_info < (3, 15, 0):  # noqa: UP036
 
 
 def main() -> None:
-    settings: Settings = config()
+    settings: Settings = command_parser()
     file_manager(settings)
 
 

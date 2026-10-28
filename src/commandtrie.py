@@ -31,7 +31,7 @@ class TrieNode:
             defaultdict(TrieNode)
         )
         self.fn: Callable | None = fn
-        self.help: str | None = help
+        self.help: str = help
         self.preprocessor_fn: tuple[Callable, ...] = (
             preprocessor_fn if preprocessor_fn else ()
         )
