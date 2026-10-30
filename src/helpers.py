@@ -4,7 +4,7 @@ import shlex
 from pathlib import Path
 from typing import Any, Literal, overload
 
-import str_templates
+import error_strings
 
 if platform.system() == "Linux":
     import readline  # noqa: F401
@@ -35,7 +35,7 @@ def path_preprocessor(raw_args: list[Any], args_to_convert: list[int]):
 def glob_counter(path: Path) -> int:
     parent, name = Path(path.parent), path.name
     if not parent.is_dir():
-        raise NotADirectoryError(str_templates.ERR_NOT_DIRECTORY.format(path))
+        raise NotADirectoryError(error_strings.ERR_NOT_DIRECTORY.format(path))
     return len(list(parent.glob(name)))
 
 
@@ -57,6 +57,6 @@ def check_glob_collisions(a: Path, b: Path) -> bool:
 def assert_glob_single_match(path: Path) -> None:
     glob_matches = glob_counter(path)
     if glob_matches == 0:
-        raise FileNotFoundError(str_templates.ERR_FILE_NOT_EXIST.format(path))
+        raise FileNotFoundError(error_strings.ERR_FILE_NOT_EXIST.format(path))
     if glob_matches > 1:
-        raise ValueError(str_templates.ERR_GLOB_TOO_MANY_MATCHES.format(path))
+        raise ValueError(error_strings.ERR_GLOB_TOO_MANY_MATCHES.format(path))

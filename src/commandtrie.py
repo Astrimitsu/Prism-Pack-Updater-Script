@@ -2,6 +2,7 @@ import sys
 from collections import defaultdict
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
+from inspect import Signature, signature
 from typing import Any
 
 from settings import Settings
@@ -11,9 +12,13 @@ from settings import Settings
 class Command:
     path: tuple[str, ...]
     fn: Callable | None = None
+    fn_sig: Signature | None = field(init=False)
     help: str = ""
     preprocessor_fn: tuple[Callable, ...] = field(default_factory=tuple)
     preprocessor_args: tuple[tuple, ...] = field(default_factory=tuple)
+
+    def __post_init__(self):
+        object.__setattr__(self, "fn_sig", signature(self.fn) if self.fn else None)
 
     def trienode_properties(self) -> Iterator[tuple[str, Any]]:
         yield from ((k, v) for k, v in vars(self).items() if k != "path")
@@ -22,7 +27,7 @@ class Command:
 class TrieNode:
     def __init__(
         self,
-        fn: Callable | None = None,
+        fn: Callable | None = None, 
         help: str = "",
         preprocessor_fn: tuple[Callable, ...] | None = None,
         preprocessor_args: tuple[tuple, ...] | None = None,
@@ -31,6 +36,7 @@ class TrieNode:
             defaultdict(TrieNode)
         )
         self.fn: Callable | None = fn
+        self.fn_sig: Signature | None = signature(fn) if fn else None
         self.help: str = help
         self.preprocessor_fn: tuple[Callable, ...] = (
             preprocessor_fn if preprocessor_fn else ()

@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-import str_templates
+import error_strings
 from helpers import assert_glob_single_match
 from instance import Instance
 from json_helpers import json_serializer_helper, settings_json_postprocessor
@@ -39,11 +39,11 @@ class Settings:
     def path_to_instance_folder(self, path: Path) -> Path:
         if self.instance:
             return Path(self._config[self.instance].path) / "minecraft" / Path(path)
-        raise AttributeError(str_templates.ERR_INSTANCE_NOT_SET_WHEN_GETTING_PATH)
+        raise AttributeError(error_strings.ERR_INSTANCE_NOT_SET_WHEN_GETTING_PATH)
 
     def set_instance(self, alias: str) -> None:
         if not self.instance_exists(alias):
-            raise ValueError(str_templates.ERR_INSTANCE_NONEXISTENT.format(alias))
+            raise ValueError(error_strings.ERR_INSTANCE_NONEXISTENT.format(alias))
         self.instance = alias
 
     def add_instance(self, raw_path: str, alias: str | None = None) -> None:
@@ -51,10 +51,10 @@ class Settings:
         if not alias:
             alias = path.stem
         if self.instance_exists(alias):
-            raise ValueError(str_templates.ERR_INSTANCE_EXISTS.format(alias))
+            raise ValueError(error_strings.ERR_INSTANCE_EXISTS.format(alias))
         if (path / "mmc-pack.json").exists():
             raise ValueError(
-                str_templates.ERR_PATH_NOT_PRISM_INSTANCE.format(str(path))
+                error_strings.ERR_PATH_NOT_PRISM_INSTANCE.format(str(path))
             )
 
         assert_glob_single_match(path)
@@ -64,7 +64,7 @@ class Settings:
 
     def remove_instance(self, alias: str) -> None:
         if not self.instance_exists(alias):
-            raise ValueError(str_templates.ERR_INSTANCE_NONEXISTENT.format(alias))
+            raise ValueError(error_strings.ERR_INSTANCE_NONEXISTENT.format(alias))
 
         del self._config[alias]
 

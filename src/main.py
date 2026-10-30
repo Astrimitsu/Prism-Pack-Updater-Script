@@ -1,6 +1,6 @@
 import sys
 
-from config import command_parser
+from command_parser import command_parser
 from file_manager import file_manager
 from settings import Settings
 
