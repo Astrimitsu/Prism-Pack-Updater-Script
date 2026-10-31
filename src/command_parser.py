@@ -1,5 +1,5 @@
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from inspect import BoundArguments, Parameter, Signature
 from pathlib import Path
 from types import UnionType
@@ -10,6 +10,7 @@ from classes import CommandNotExist, InvalidCommandArgCount
 from commandtrie import TrieNode, build_command_trie
 from helpers import shell_input
 from settings import Settings
+from sig_tools import assert_positional_arg_count_within_bounds
 
 
 class ResolvedCommand(NamedTuple):
@@ -48,39 +49,25 @@ def get_command(command_trie: TrieNode, tokens: list[str]) -> ResolvedCommand:
     )
 
 
-def execute_command(cmd: ResolvedCommand) -> None:
-    pass
+def typecast_command_arg_from_param(arg: object, param: Parameter) -> object:
+    annotation: type | UnionType = param.annotation
+    if annotation is Parameter.empty:
+        return arg
 
+    if annotation is UnionType:
+        union: tuple[type, ...] = get_args(param.annotation)
+        if type(arg) in union:
+            return arg
+        constructor: type = get_args(param.annotation)[0]
 
-def get_fn_min_max_positional_args(sig: Signature) -> tuple[int, int | None]:
-    min_args: int = 0
-    max_args: int | None = 0
+    else:
+        if type(arg) is annotation:
+            return arg
+        constructor: type = annotation
 
-    for param in sig.parameters.values():
-        match param.kind:
-            case Parameter.POSITIONAL_ONLY | Parameter.POSITIONAL_OR_KEYWORD:
-                max_args += 1
-            case Parameter.VAR_POSITIONAL:
-                max_args = None
-                break
-            case Parameter.KEYWORD_ONLY | Parameter.VAR_KEYWORD:
-                break
-
-        if param.default is Parameter.empty:
-            min_args += 1
-
-    return min_args, max_args
-
-
-def assert_positional_arg_count_within_bounds(
-    sig: Signature, args: int | Sequence[Any]
-) -> None:
-    arg_count = args if isinstance(args, int) else len(args)
-    min_args, max_args = get_fn_min_max_positional_args(sig)
-    if arg_count < min_args:
-        raise InvalidCommandArgCount(error_strings.ERR_INVALID_COMMAND_ARGCOUNT)
-    if max_args is not None and max_args < arg_count:
-        raise InvalidCommandArgCount(error_strings.ERR_INVALID_COMMAND_ARGCOUNT)
+    if constructor is str:
+        return arg
+    return constructor(arg)
 
 
 def process_command_args(cmd: ResolvedCommand) -> BoundArguments:
@@ -90,22 +77,12 @@ def process_command_args(cmd: ResolvedCommand) -> BoundArguments:
     ):
         processed_args = preprocessor_fn(processed_args, *preprocessor_args)
 
-    assert_command_args_within_bounds(cmd.fn_sig, processed_args)
+    assert_positional_arg_count_within_bounds(cmd.fn_sig, processed_args)
 
-    for i, (arg, param) in enumerate(
-        zip(processed_args, cmd.fn_sig.parameters.values())
-    ):
-        annotation: type | UnionType = param.annotation
-        if annotation is Parameter.empty:
-            continue
-        if isinstance(annotation, UnionType):
-            constructor: type = get_args(param.annotation)[0]
-        else:
-            constructor: type = annotation
-
-        if constructor is str:
-            continue
-        processed_args[i] = constructor(arg)
+    processed_args = [
+        typecast_command_arg_from_param(arg, param)
+        for arg, param in zip(processed_args, cmd.fn_sig.parameters.values())
+    ]
 
     bound_args = cmd.fn_sig.bind(*processed_args)
 
