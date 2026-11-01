@@ -1,5 +1,7 @@
 from collections.abc import Sequence
 from inspect import Parameter, Signature
+from types import UnionType
+from typing import get_args
 
 import error_strings
 from classes import InvalidCommandArgCount
@@ -34,5 +36,26 @@ def assert_positional_arg_count_within_bounds(
         raise InvalidCommandArgCount(error_strings.ERR_INVALID_COMMAND_ARGCOUNT)
     if max_args is not None and max_args < arg_count:
         raise InvalidCommandArgCount(error_strings.ERR_INVALID_COMMAND_ARGCOUNT)
+
+
+def typecast_command_arg_from_param(arg: object, param: Parameter) -> object:
+    annotation: type | UnionType = param.annotation
+    if annotation is Parameter.empty:
+        return arg
+
+    if isinstance(annotation, UnionType):
+        union: tuple[type, ...] = get_args(param.annotation)
+        if type(arg) in union:
+            return arg
+        constructor: type = get_args(param.annotation)[0]
+
+    else:
+        if type(arg) is annotation:
+            return arg
+        constructor: type = annotation
+
+    if constructor is str:
+        return arg
+    return constructor(arg)
 
 

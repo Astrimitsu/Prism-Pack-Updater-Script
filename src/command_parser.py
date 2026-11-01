@@ -1,16 +1,12 @@
-import sys
 from collections.abc import Callable
-from inspect import BoundArguments, Parameter, Signature
-from pathlib import Path
-from types import UnionType
-from typing import Any, NamedTuple, get_args
+from inspect import BoundArguments, Signature
+from typing import Any, NamedTuple
 
 import error_strings
 from classes import CommandNotExist, CommandSignal, InvalidCommandArgCount
-from commandtrie import TrieNode, build_command_trie
+from commandtrie import TrieNode
 from helpers import shell_input
-from settings import Settings
-from sig_tools import assert_positional_arg_count_within_bounds
+from sig_tools import assert_positional_arg_count_within_bounds, typecast_command_arg_from_param
 
 
 class ResolvedCommand(NamedTuple):
@@ -34,8 +30,6 @@ def get_command(command_trie: TrieNode, tokens: list[str]) -> ResolvedCommand:
 
     cmd_path = " ".join(tokens[:args_starting_index])
     if node.fn is None or node.fn_sig is None:
-        print(node.fn)
-        print(node.fn_sig)
         raise CommandNotExist(error_strings.ERR_COMMAND_NONEXISTENT.format(cmd_path))
     args = tokens[args_starting_index:]
 
@@ -47,27 +41,6 @@ def get_command(command_trie: TrieNode, tokens: list[str]) -> ResolvedCommand:
         node.preprocessor_fn,
         node.preprocessor_args,
     )
-
-
-def typecast_command_arg_from_param(arg: object, param: Parameter) -> object:
-    annotation: type | UnionType = param.annotation
-    if annotation is Parameter.empty:
-        return arg
-
-    if isinstance(annotation, UnionType):
-        union: tuple[type, ...] = get_args(param.annotation)
-        if type(arg) in union:
-            return arg
-        constructor: type = get_args(param.annotation)[0]
-
-    else:
-        if type(arg) is annotation:
-            return arg
-        constructor: type = annotation
-
-    if constructor is str:
-        return arg
-    return constructor(arg)
 
 
 def process_command_args(cmd: ResolvedCommand) -> BoundArguments:
@@ -90,32 +63,24 @@ def process_command_args(cmd: ResolvedCommand) -> BoundArguments:
     return bound_args
 
 
-def command_parser(command_trie_root: TrieNode, prompt: Callable) -> None:
-    settings = Settings.from_disk(Path("settings.json"))
+def command_parser(command_trie_root: TrieNode, *, prompt: Callable | None = None ) -> object:
     cmd: TrieNode | ResolvedCommand = command_trie_root
 
-    while True:
-        try:
-            tokens = shell_input(prompt() if prompt else None)
+    try:
+        tokens = shell_input(prompt() if prompt else None)
 
-            cmd = get_command(command_trie_root, tokens)
+        cmd = get_command(command_trie_root, tokens)
 
-            bound_args: BoundArguments = process_command_args(cmd)
+        bound_args: BoundArguments = process_command_args(cmd)
 
-            command_signal: CommandSignal = cmd.fn(
-                *bound_args.args, **bound_args.kwargs
-            )
+        command_return: CommandSignal = cmd.fn(
+            *bound_args.args, **bound_args.kwargs
+        )
 
-            if command_signal is CommandSignal.QUIT:
-                break
+        return command_return
 
-            settings.write_if_dirty()
-
-        except KeyboardInterrupt:
-            settings.write_if_dirty()
-            sys.exit(0)
-        except (CommandNotExist, ValueError) as e:
-            print(e)
-        except InvalidCommandArgCount as e:
-            print(e)
-            print(cmd.help)
+    except (CommandNotExist, ValueError) as e:
+        print(e)
+    except InvalidCommandArgCount as e:
+        print(e)
+        print(cmd.help)
