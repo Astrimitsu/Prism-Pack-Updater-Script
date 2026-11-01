@@ -1,24 +1,16 @@
-import sys
 from collections import defaultdict
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
-from inspect import Signature, signature
+from inspect import Signature, getmembers, signature
 from typing import Any
-
-from settings import Settings
 
 
 @dataclass(frozen=True)
-class Command:
+class CommandMetadata:
     path: tuple[str, ...]
-    fn: Callable | None = None
-    fn_sig: Signature | None = field(init=False)
     help: str = ""
     preprocessor_fn: tuple[Callable, ...] = field(default_factory=tuple)
-    preprocessor_args: tuple[tuple, ...] = field(default_factory=tuple)
-
-    def __post_init__(self):
-        object.__setattr__(self, "fn_sig", signature(self.fn) if self.fn else None)
+    preprocessor_args: tuple[tuple[Any], ...] = field(default_factory=tuple)
 
     def trienode_properties(self) -> Iterator[tuple[str, Any]]:
         yield from ((k, v) for k, v in vars(self).items() if k != "path")
@@ -27,7 +19,7 @@ class Command:
 class TrieNode:
     def __init__(
         self,
-        fn: Callable | None = None, 
+        fn: Callable | None = None,
         help: str = "",
         preprocessor_fn: tuple[Callable, ...] | None = None,
         preprocessor_args: tuple[tuple, ...] | None = None,
@@ -46,12 +38,14 @@ class TrieNode:
         )
         self._frozen = False
 
-    def add_command_to_trie(self, command: Command) -> None:
+    def add_command_to_trie(self, fn: Callable, metadata: CommandMetadata) -> None:
         current: TrieNode = self
-        for command_part in command.path:
+        for command_part in metadata.path:
             current = current.subcommands[command_part]
-        for k, v in command.trienode_properties():
+        for k, v in metadata.trienode_properties():
             setattr(current, k, v)
+        current.fn = fn
+        current.fn_sig = signature(fn)
 
     def _deepfreeze(self) -> None:
         for node in self.subcommands.values():
@@ -70,42 +64,27 @@ class TrieNode:
         super().__delattr__(name)
 
 
-def build_commands(settings: Settings) -> tuple[Command, ...]:
-    return (
-        Command(("quit",), lambda *args: sys.exit(0), "Exit the program"),
-        Command(
-            ("instance",),
-            settings.get_instances,
-            "instance\nDisplay all active instances",
-        ),
-        Command(
-            ("instance", "set"),
-            settings.set_instance,
-            "instance set <alias>\nSet current instance",
-        ),
-        Command(
-            ("instance", "add"),
-            settings.add_instance,
-            "instance add <path> [alias]\nAdds a new instance, alias defaults to folder name if not specified. Path must be surrounded by quotes.",
-        ),
-        Command(
-            ("instance", "remove"),
-            settings.remove_instance,
-            "instance remove <alias>\nRemoves an existing instance",
-        ),
-    )
+def command(
+    path: tuple[str, ...],
+    help: str = "",
+    preprocessor_fn: tuple[Callable, ...] = (),
+    preprocessor_args: tuple[tuple[Any], ...] = (),
+) -> Callable:
+    def decorator(fn: Callable) -> Callable:
+        metadata: CommandMetadata = CommandMetadata(
+            path, help, preprocessor_fn, preprocessor_args
+        )
+        fn._command_metadata = metadata  # type: ignore[attr-defined]
+        return fn
+
+    return decorator
 
 
-def trie_from_commands(commands: list[Command]) -> TrieNode:
-    trie: TrieNode = TrieNode()
+def build_command_trie(*commands: object) -> TrieNode:
+    trie_root: TrieNode = TrieNode()
     for command in commands:
-        trie.add_command_to_trie(command)
-    return trie
-
-
-def build_command_trie(settings: Settings) -> TrieNode:
-    commands: list[Command] = []
-    commands.extend(build_commands(settings))
-    trie = trie_from_commands(commands)
-    trie._deepfreeze()
-    return trie
+        for _, member in getmembers(command):
+            if hasattr(member, "_command_metadata"):
+                trie_root.add_command_to_trie(member, member._command_metadata)
+    trie_root._deepfreeze()
+    return trie_root

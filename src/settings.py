@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import error_strings
+from commandtrie import command
 from helpers import assert_glob_single_match
 from instance import Instance
 from json_helpers import json_serializer_helper, settings_json_postprocessor
@@ -23,13 +24,14 @@ class Settings:
         except FileNotFoundError:
             return Settings()
 
+    @command(("instance",), "instance\nDisplay all active instances")
     def get_instances(self):
         return [instance for instance in self._config]
 
     def instance_exists(self, alias: str) -> bool:
         return alias in self._config
 
-    def write_to_json(self) -> None:
+    def write_if_dirty(self) -> None:
         if not self.dirty:
             return
 
@@ -41,11 +43,16 @@ class Settings:
             return Path(self._config[self.instance].path) / "minecraft" / Path(path)
         raise AttributeError(error_strings.ERR_INSTANCE_NOT_SET_WHEN_GETTING_PATH)
 
+    @command(("instance", "set"), "instance set <alias>\nSet current instance")
     def set_instance(self, alias: str) -> None:
         if not self.instance_exists(alias):
             raise ValueError(error_strings.ERR_INSTANCE_NONEXISTENT.format(alias))
         self.instance = alias
 
+    @command(
+        ("instance", "add"),
+        "instance add <path> [alias]\nAdds a new instance, alias defaults to folder name if not specified. Path must be surrounded by quotes.",
+    )
     def add_instance(self, raw_path: str, alias: str | None = None) -> None:
         path = Path(raw_path)
         if not alias:
@@ -62,6 +69,7 @@ class Settings:
         self._config[alias] = Instance(path)
         self.dirty = True
 
+    @command(("instance", "remove"), "instance remove <alias>\nRemoves an existing instance")
     def remove_instance(self, alias: str) -> None:
         if not self.instance_exists(alias):
             raise ValueError(error_strings.ERR_INSTANCE_NONEXISTENT.format(alias))

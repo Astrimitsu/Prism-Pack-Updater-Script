@@ -3,7 +3,6 @@ from inspect import Parameter, Signature
 
 import error_strings
 from classes import InvalidCommandArgCount
-from typing import Any
 
 
 def get_fn_min_max_positional_args(sig: Signature) -> tuple[int, int | None]:
@@ -27,9 +26,9 @@ def get_fn_min_max_positional_args(sig: Signature) -> tuple[int, int | None]:
 
 
 def assert_positional_arg_count_within_bounds(
-    sig: Signature, args: int | Sequence[Any]
+    sig: Signature, args: Sequence
 ) -> None:
-    arg_count = args if isinstance(args, int) else len(args)
+    arg_count: int = len(args)
     min_args, max_args = get_fn_min_max_positional_args(sig)
     if arg_count < min_args:
         raise InvalidCommandArgCount(error_strings.ERR_INVALID_COMMAND_ARGCOUNT)

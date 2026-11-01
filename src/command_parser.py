@@ -6,7 +6,7 @@ from types import UnionType
 from typing import Any, NamedTuple, get_args
 
 import error_strings
-from classes import CommandNotExist, InvalidCommandArgCount
+from classes import CommandNotExist, CommandSignal, InvalidCommandArgCount
 from commandtrie import TrieNode, build_command_trie
 from helpers import shell_input
 from settings import Settings
@@ -54,7 +54,7 @@ def typecast_command_arg_from_param(arg: object, param: Parameter) -> object:
     if annotation is Parameter.empty:
         return arg
 
-    if annotation is UnionType:
+    if isinstance(annotation, UnionType):
         union: tuple[type, ...] = get_args(param.annotation)
         if type(arg) in union:
             return arg
@@ -78,6 +78,7 @@ def process_command_args(cmd: ResolvedCommand) -> BoundArguments:
         processed_args = preprocessor_fn(processed_args, *preprocessor_args)
 
     assert_positional_arg_count_within_bounds(cmd.fn_sig, processed_args)
+    
 
     processed_args = [
         typecast_command_arg_from_param(arg, param)
@@ -89,29 +90,32 @@ def process_command_args(cmd: ResolvedCommand) -> BoundArguments:
     return bound_args
 
 
-def command_parser() -> Settings:
+def command_parser(command_trie_root: TrieNode, prompt: Callable) -> None:
     settings = Settings.from_disk(Path("settings.json"))
-
-    command_trie_root: TrieNode = build_command_trie(settings)
     cmd: TrieNode | ResolvedCommand = command_trie_root
+
     while True:
         try:
-            tokens = shell_input(settings.instance)
+            tokens = shell_input(prompt() if prompt else None)
 
             cmd = get_command(command_trie_root, tokens)
 
             bound_args: BoundArguments = process_command_args(cmd)
 
-            cmd.fn(*bound_args.args, **bound_args.kwargs)
+            command_signal: CommandSignal = cmd.fn(
+                *bound_args.args, **bound_args.kwargs
+            )
 
-            settings.write_to_json()
+            if command_signal is CommandSignal.QUIT:
+                break
+
+            settings.write_if_dirty()
 
         except KeyboardInterrupt:
-            settings.write_to_json()
+            settings.write_if_dirty()
             sys.exit(0)
         except (CommandNotExist, ValueError) as e:
             print(e)
         except InvalidCommandArgCount as e:
             print(e)
             print(cmd.help)
-    return settings
