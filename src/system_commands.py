@@ -1,6 +1,8 @@
-from commandtrie import command
 import sys
+
 from classes import CommandSignal
+from commandtrie import command
+
 
 class SystemCommands:
 

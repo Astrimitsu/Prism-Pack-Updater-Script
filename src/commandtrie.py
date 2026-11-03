@@ -9,6 +9,7 @@ from typing import Any
 class CommandMetadata:
     path: tuple[str, ...]
     help: str = ""
+    kwarg_map: frozendict[str, str] = field(default_factory=frozendict)
     preprocessor_fn: tuple[Callable, ...] = field(default_factory=tuple)
     preprocessor_args: tuple[tuple[Any], ...] = field(default_factory=tuple)
 
@@ -21,6 +22,7 @@ class TrieNode:
         self,
         fn: Callable | None = None,
         help: str = "",
+        kwarg_map: frozendict[str, str] = frozendict(),
         preprocessor_fn: tuple[Callable, ...] | None = None,
         preprocessor_args: tuple[tuple, ...] | None = None,
     ) -> None:
@@ -29,6 +31,7 @@ class TrieNode:
         )
         self.fn: Callable | None = fn
         self.fn_sig: Signature | None = signature(fn) if fn else None
+        self.kwarg_map: frozendict[str, str] = kwarg_map
         self.help: str = help
         self.preprocessor_fn: tuple[Callable, ...] = (
             preprocessor_fn if preprocessor_fn else ()
@@ -67,12 +70,13 @@ class TrieNode:
 def command(
     path: tuple[str, ...],
     help: str = "",
+    kwarg_map: frozendict[str, str] = frozendict(),
     preprocessor_fn: tuple[Callable, ...] = (),
     preprocessor_args: tuple[tuple[Any], ...] = (),
 ) -> Callable:
     def decorator(fn: Callable) -> Callable:
         metadata: CommandMetadata = CommandMetadata(
-            path, help, preprocessor_fn, preprocessor_args
+            path, help, kwarg_map, preprocessor_fn, preprocessor_args
         )
         fn._command_metadata = metadata  # type: ignore[attr-defined]
         return fn

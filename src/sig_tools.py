@@ -5,6 +5,7 @@ from typing import get_args
 
 import error_strings
 from classes import InvalidCommandArgCount
+from consts import ANY_KWARGS
 
 
 def get_fn_min_max_positional_args(sig: Signature) -> tuple[int, int | None]:
@@ -26,6 +27,15 @@ def get_fn_min_max_positional_args(sig: Signature) -> tuple[int, int | None]:
 
     return min_args, max_args
 
+def get_function_kwargs(sig: Signature) -> dict[object, object]:
+    kwargs: dict[object, object] = {}
+    for param_name, param in sig.parameters.items():
+        if param.kind in (Parameter.POSITIONAL_OR_KEYWORD, Parameter.KEYWORD_ONLY):
+            kwargs[param_name] = param.default
+        elif param.kind is Parameter.VAR_KEYWORD:
+            kwargs[ANY_KWARGS] = param.default
+    return kwargs
+
 
 def assert_positional_arg_count_within_bounds(
     sig: Signature, args: Sequence
@@ -38,7 +48,7 @@ def assert_positional_arg_count_within_bounds(
         raise InvalidCommandArgCount(error_strings.ERR_INVALID_COMMAND_ARGCOUNT)
 
 
-def typecast_command_arg_from_param(arg: object, param: Parameter) -> object:
+def typecast_arg_from_param(arg: object, param: Parameter) -> object:
     annotation: type | UnionType = param.annotation
     if annotation is Parameter.empty:
         return arg
