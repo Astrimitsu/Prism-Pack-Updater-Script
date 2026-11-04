@@ -12,8 +12,9 @@ from commandtrie import TrieNode
 from helpers import shell_input
 from sig_tools import (
     assert_positional_arg_count_within_bounds,
-    typecast_arg_from_param,
+    typecast_bound_args,
 )
+from kwarg_extractor import extract_kwargs_from_args
 
 
 class ResolvedCommand(NamedTuple):
@@ -51,23 +52,26 @@ def get_command(command_trie: TrieNode, tokens: list[str]) -> ResolvedCommand:
         node.preprocessor_args,
     )
 
-def process_command_args(cmd: ResolvedCommand) -> BoundArguments:
-    processed_args = cmd.args
+
+def run_positional_preprocessors(tokens: list[str], cmd: ResolvedCommand) -> list[str]:
+    processed_args: list[str] = tokens.copy()
     for preprocessor_fn, preprocessor_args in zip(
         cmd.preprocessor_fn, cmd.preprocessor_args
     ):
         processed_args = preprocessor_fn(processed_args, *preprocessor_args)
+    return processed_args
 
+
+def process_command_args(cmd: ResolvedCommand) -> BoundArguments:
+    args, kwargs = extract_kwargs_from_args(cmd.args, cmd.fn_sig, cmd.kwarg_map)
+
+    processed_args = run_positional_preprocessors(args, cmd)
+    
     assert_positional_arg_count_within_bounds(cmd.fn_sig, processed_args)
 
-    processed_args = [
-        typecast_arg_from_param(arg, param)
-        for arg, param in zip(processed_args, cmd.fn_sig.parameters.values())
-    ]
+    cast_args = typecast_bound_args(cmd.fn_sig.bind(*processed_args, **kwargs))
 
-    bound_args = cmd.fn_sig.bind(*processed_args)
-
-    return bound_args
+    return cast_args
 
 
 def command_parser(
