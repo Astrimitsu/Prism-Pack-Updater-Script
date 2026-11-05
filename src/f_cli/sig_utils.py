@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from inspect import Parameter, Signature, BoundArguments
+from inspect import BoundArguments, Parameter, Signature
 from types import UnionType
 from typing import get_args
 

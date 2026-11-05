@@ -3,7 +3,7 @@ from pathlib import Path
 
 import error_strings
 from commandtrie import command
-from helpers import assert_glob_single_match
+from glob_utils import assert_glob_single_match
 from instance import Instance
 from json_helpers import json_serializer_helper, settings_json_postprocessor
 

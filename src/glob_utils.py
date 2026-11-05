@@ -1,35 +1,9 @@
 import os
-import platform
-import shlex
-from pathlib import Path
-from typing import Any, Literal, overload
 
 import error_strings
 
-if platform.system() == "Linux":
-    import readline  # noqa: F401
 
-
-@overload
-def shell_input(prompt: str | None, *, string: Literal[False]) -> list[str]: ...
-@overload
-def shell_input(prompt: str | None, *, string: Literal[True]) -> str: ...
-@overload
-def shell_input(prompt: str | None) -> list[str]: ...
-
-
-def shell_input(prompt: str | None = None, *, string=False) -> list[str] | str:
-    raw_args = input(f"{prompt if prompt else ""}> ").strip()
-    if string:
-        return raw_args
-    return shlex.split(raw_args.replace("\\", "/"))
-
-
-def path_preprocessor(raw_args: list[Any], args_to_convert: list[int]):
-    new_args = raw_args.copy()
-    for i in args_to_convert:
-        new_args[i] = Path(os.path.expandvars(raw_args[i]))
-    return new_args
+from pathlib import Path
 
 
 def glob_counter(path: Path) -> int:

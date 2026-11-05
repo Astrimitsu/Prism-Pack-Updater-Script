@@ -1,4 +1,4 @@
-from collections.abc import Iterator, Sequence, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 from inspect import Signature
 
 import error_strings
@@ -12,7 +12,7 @@ def extract_kwargs_from_args(
 ) -> tuple[list[str], dict[str, str | bool]]:
     fn_kwargs: dict[object, object] = get_function_kwargs(sig)
     kwargs: dict[str, str | bool] = {}
-    args: list = []
+    args: list[str] = []
 
     kwarg_iterator = iter(input_args)
     for token in kwarg_iterator:
@@ -30,7 +30,7 @@ def extract_kwargs_from_args(
             kwargs[resolved_token] = not kwarg_default
             continue
 
-        kwargs[resolved_token] = get_and_consume_next_token(kwarg_iterator, token)
+        kwargs[resolved_token] = consume_kwarg_value(kwarg_iterator, token)
 
     return args, kwargs
 
@@ -53,11 +53,12 @@ def get_kwarg_param_default(token: str, fn_kwargs: Mapping[object, object]) -> o
     return fn_kwargs.get(token, fn_kwargs[ANY_KWARGS])
 
 
-def get_and_consume_next_token(iterator: Iterator, raw_token: str) -> str:
+def consume_kwarg_value(iterator: Iterator, raw_token: str) -> str:
     try:
         kwarg_value = next(iterator)
         if is_kwarg(kwarg_value):
             raise ValueError
+        
     except (StopIteration, ValueError):
         raise InvalidCommandArgCount(
             error_strings.ERR_MISSING_KWARG_ARGUMENT.format(raw_token)
