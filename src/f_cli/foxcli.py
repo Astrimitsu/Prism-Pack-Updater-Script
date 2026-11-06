@@ -36,7 +36,7 @@ class FoxCLI:
         self._registered_types.remove(type(obj))
 
     def build(self) -> None:
-        self._trie = build_command_trie(*self._registered_objects)
+        self._trie = build_command_trie(self._registered_objects)
 
     def run(
         self, *, prompt: Callable = lambda: None, args: list[str] | None = None

@@ -1,7 +1,7 @@
 from collections import defaultdict
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass, field
-from inspect import Signature, getmembers, signature
+from dataclasses import dataclass, field, replace
+from inspect import Signature, getmembers_static, isfunction, ismethod, signature
 from typing import Any
 
 
@@ -11,9 +11,9 @@ class CommandMetadata:
     help: str = ""
     kwarg_map: frozendict[str, str] = field(default_factory=frozendict)
     preprocessor_fn: tuple[Callable, ...] = field(default_factory=tuple)
-    preprocessor_args: tuple[tuple[Any], ...] = field(default_factory=tuple)
+    preprocessor_args: tuple[tuple[object], ...] = field(default_factory=tuple)
 
-    def trienode_properties(self) -> Iterator[tuple[str, Any]]:
+    def trienode_properties(self) -> Iterator[tuple[str, object]]:
         yield from ((k, v) for k, v in vars(self).items() if k != "path")
 
 
@@ -41,14 +41,16 @@ class TrieNode:
         )
         self._frozen = False
 
-    def add_command_to_trie(self, fn: Callable, metadata: CommandMetadata) -> None:
+    def add_command_to_trie(
+        self, fn: Callable | None, metadata: CommandMetadata
+    ) -> None:
         current: TrieNode = self
         for command_part in metadata.path:
             current = current.subcommands[command_part]
         for k, v in metadata.trienode_properties():
             setattr(current, k, v)
         current.fn = fn
-        current.fn_sig = signature(fn)
+        current.fn_sig = signature(fn) if fn else None
 
     def _deepfreeze(self) -> None:
         for node in self.subcommands.values():
@@ -67,12 +69,21 @@ class TrieNode:
         super().__delattr__(name)
 
 
+def namespace(path: tuple[str, ...], help: str = "") -> Callable:
+    def decorator(cls: type):
+        metadata: CommandMetadata = CommandMetadata(path, help)
+        cls._command_metadata = metadata
+        return cls
+
+    return decorator
+
+
 def command(
     path: tuple[str, ...],
     help: str = "",
     kwarg_map: frozendict[str, str] = frozendict(),
     preprocessor_fn: tuple[Callable, ...] = (),
-    preprocessor_args: tuple[tuple[Any], ...] = (),
+    preprocessor_args: tuple[tuple[object], ...] = (),
 ) -> Callable:
     def decorator(fn: Callable) -> Callable:
         metadata: CommandMetadata = CommandMetadata(
@@ -84,11 +95,27 @@ def command(
     return decorator
 
 
-def build_command_trie(*commands: object) -> TrieNode:
+def build_command_trie(command_containers: set[Any]) -> TrieNode:
     trie_root: TrieNode = TrieNode()
-    for command in commands:
-        for _, member in getmembers(command):
+    for container in command_containers:
+        container_namespace: CommandMetadata | None = None
+
+        if hasattr(container, "_command_metadata"):
+            container_namespace = container._command_metadata
+            trie_root.add_command_to_trie(None, container._command_metadata)
+
+        for _, member in getmembers_static(
+            container, predicate=lambda m: isfunction(m) or ismethod(m)
+        ):
             if hasattr(member, "_command_metadata"):
-                trie_root.add_command_to_trie(member, member._command_metadata)
+                metadata: CommandMetadata = member._command_metadata
+
+                if container_namespace:
+                    metadata = replace(
+                        metadata, path=container_namespace.path + metadata.path
+                    )
+                trie_root.add_command_to_trie(member, metadata)
+
     trie_root._deepfreeze()
+
     return trie_root
