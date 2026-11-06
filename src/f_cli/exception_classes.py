@@ -1,9 +1,5 @@
-from enum import StrEnum, auto
-
-
 class CommandNotExist(Exception):
-    # Raised when command matches no valid commands
-    pass
+    """Raised when command matches no valid commands"""
 
 class InvalidCommandArgCount(Exception):
     pass
@@ -11,6 +7,5 @@ class InvalidCommandArgCount(Exception):
 class KwargNotFound(Exception):
     pass
 
-class CommandSignal(StrEnum):
-    SUCCESS = auto()
-    QUIT = auto()
+class CoercionError(Exception):
+    """Raised when argument coercion or stream consumption fails."""

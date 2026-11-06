@@ -3,16 +3,14 @@ from inspect import BoundArguments, Signature
 from typing import NamedTuple
 
 import error_strings
-from classes import (
-    CommandNotExist,
-    InvalidCommandArgCount,
-)
 from commandtrie import TrieNode
-from helpers import clean_input, shell_input, strip_script_name
+from exception_classes import CommandNotExist, InvalidCommandArgCount
+from f_cli.typecaster import typecast_bound_args
 from kwarg_extractor import extract_kwargs_from_args
-from sig_tools import (
+from shell_utils import clean_input, shell_input, strip_script_name
+
+from f_cli.sig_utils import (
     assert_positional_arg_count_within_bounds,
-    typecast_bound_args,
 )
 
 
@@ -69,6 +67,7 @@ def get_command(command_trie: TrieNode, tokens: list[str]) -> ResolvedCommand:
     if node.fn is None or node.fn_sig is None:
         cmd_path = " ".join(tokens[:args_starting_index])
         raise CommandNotExist(error_strings.ERR_COMMAND_NONEXISTENT.format(cmd_path))
+
     args = tuple(tokens[args_starting_index:])
 
     return ResolvedCommand(
