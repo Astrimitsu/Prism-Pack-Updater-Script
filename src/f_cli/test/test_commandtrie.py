@@ -1,22 +1,10 @@
-import pytest
-
-from src.commandtrie import Command, TrieNode, trie_from_commands
-
-
-@pytest.fixture
-def commands():
-    return (
-        Command(("a",), None, None, None, ""),
-        Command(("a", "a"), None, None, repr, "text"),
-        Command(("a", "b"), (len, any), ((),), all, "stuff"),
-        Command(("c",), None, None, dict, "make a dict or something"),
-    )
+from ..commandtrie import TrieNode, build_command_trie
 
 
 class TestBuildCommandTrie:
 
     def test_build_command_trie(self, commands):
-        trie: TrieNode = trie_from_commands(commands)
+        trie: TrieNode = build_command_trie(commands)
         trie._deepfreeze()
 
         for command in commands:

@@ -1,11 +1,9 @@
-
-
-from inspect import BoundArguments
+from inspect import BoundArguments, Parameter
 from types import UnionType
-from typing import get_args, Parameter
+from typing import get_args
 
 
-def typecast_arg_from_param(arg: object, param: Parameter) -> object:
+def coerce_arg_from_param(arg: object, param: Parameter) -> object:
     annotation: type | UnionType = param.annotation
     if annotation is Parameter.empty:
         return arg
@@ -26,9 +24,9 @@ def typecast_arg_from_param(arg: object, param: Parameter) -> object:
     return constructor(arg)
 
 
-def typecast_bound_args(bound_args: BoundArguments) -> BoundArguments:
+def coerce_bound_args(bound_args: BoundArguments) -> BoundArguments:
     cast_args = {
-        name: typecast_arg_from_param(arg, bound_args.signature.parameters[name])
+        name: coerce_arg_from_param(arg, bound_args.signature.parameters[name])
         for name, arg in bound_args.arguments.items()
     }
     return BoundArguments(bound_args.signature, cast_args)

@@ -1,15 +1,13 @@
 import os
-
-import error_strings
-
-
 from pathlib import Path
+
+import errors
 
 
 def glob_counter(path: Path) -> int:
     parent, name = Path(path.parent), path.name
     if not parent.is_dir():
-        raise NotADirectoryError(error_strings.ERR_NOT_DIRECTORY.format(path))
+        raise NotADirectoryError(errors.ERR_NOT_DIRECTORY.format(path))
     return len(list(parent.glob(name)))
 
 
@@ -31,6 +29,6 @@ def check_glob_collisions(a: Path, b: Path) -> bool:
 def assert_glob_single_match(path: Path) -> None:
     glob_matches = glob_counter(path)
     if glob_matches == 0:
-        raise FileNotFoundError(error_strings.ERR_FILE_NOT_EXIST.format(path))
+        raise FileNotFoundError(errors.ERR_FILE_NOT_EXIST.format(path))
     if glob_matches > 1:
-        raise ValueError(error_strings.ERR_GLOB_TOO_MANY_MATCHES.format(path))
+        raise ValueError(errors.ERR_GLOB_TOO_MANY_MATCHES.format(path))

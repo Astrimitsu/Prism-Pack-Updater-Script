@@ -23,3 +23,6 @@ def shell_input(prompt: str | None = None, *, string=False) -> list[str] | str:
 
 def clean_input(args: list[str]) -> list[str]:
     return [arg.replace("\\", "/") for arg in args]
+
+def strip_script_name(args: list[str]) -> list[str]:
+    return args if not args[0].endswith(".py") else args[:1]
