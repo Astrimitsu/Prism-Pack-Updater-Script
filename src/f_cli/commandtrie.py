@@ -2,7 +2,7 @@ from collections import defaultdict
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field, replace
 from inspect import Signature, getmembers_static, isfunction, ismethod, signature
-from typing import Any
+from typing import Any, Protocol
 
 
 @dataclass(frozen=True)
@@ -72,7 +72,7 @@ class TrieNode:
 def namespace(path: tuple[str, ...], help: str = "") -> Callable:
     def decorator(cls: type):
         metadata: CommandMetadata = CommandMetadata(path, help)
-        cls._command_metadata = metadata
+        cls._foxcli_command_metadata = metadata
         return cls
 
     return decorator
@@ -89,7 +89,7 @@ def command(
         metadata: CommandMetadata = CommandMetadata(
             path, help, kwarg_map, preprocessor_fn, preprocessor_args
         )
-        fn._command_metadata = metadata  # type: ignore[attr-defined]
+        fn._foxcli_command_metadata = metadata  # type: ignore[attr-defined]
         return fn
 
     return decorator
@@ -100,15 +100,15 @@ def build_command_trie(command_containers: set[Any]) -> TrieNode:
     for container in command_containers:
         container_namespace: CommandMetadata | None = None
 
-        if hasattr(container, "_command_metadata"):
-            container_namespace = container._command_metadata
-            trie_root.add_command_to_trie(None, container._command_metadata)
+        if hasattr(container, "_foxcli_command_metadata"):
+            container_namespace = container._foxcli_command_metadata
+            trie_root.add_command_to_trie(None, container._foxcli_command_metadata)
 
         for _, member in getmembers_static(
             container, predicate=lambda m: isfunction(m) or ismethod(m)
         ):
-            if hasattr(member, "_command_metadata"):
-                metadata: CommandMetadata = member._command_metadata
+            if hasattr(member, "_foxcli_command_metadata"):
+                metadata: CommandMetadata = member._foxcli_command_metadata
 
                 if container_namespace:
                     metadata = replace(

@@ -1,17 +1,6 @@
 from collections.abc import Callable
-from inspect import BoundArguments, Signature
+from inspect import Signature
 from typing import NamedTuple
-
-import error_strings
-from commandtrie import TrieNode
-from exception_classes import CommandNotExist
-from kwarg_extractor import extract_kwargs_from_args
-
-from f_cli.sig_utils import (
-    assert_positional_arg_count_within_bounds,
-)
-
-from .typecasting import coerce_bound_args
 
 
 class ResolvedCommand(NamedTuple):
@@ -23,32 +12,6 @@ class ResolvedCommand(NamedTuple):
     preprocessor_fn: tuple[Callable, ...]
     preprocessor_args: tuple[tuple, ...]
 
-def get_command(command_trie: TrieNode, tokens: list[str]) -> ResolvedCommand:
-    node: TrieNode = command_trie
-    args_starting_index: int = 0
-
-    for token in tokens:
-        if token not in node.subcommands:
-            break
-        node = node.subcommands[token]
-        args_starting_index += 1
-
-    if node.fn is None or node.fn_sig is None:
-        cmd_path = " ".join(tokens[:args_starting_index])
-        raise CommandNotExist(error_strings.ERR_COMMAND_NONEXISTENT.format(cmd_path))
-
-    args = tuple(tokens[args_starting_index:])
-
-    return ResolvedCommand(
-        node.fn,
-        node.fn_sig,
-        args,
-        node.kwarg_map,
-        node.help,
-        node.preprocessor_fn,
-        node.preprocessor_args,
-    )
-
 
 def run_positional_preprocessors(tokens: list[str], cmd: ResolvedCommand) -> list[str]:
     processed_args: list[str] = tokens.copy()
@@ -59,13 +22,3 @@ def run_positional_preprocessors(tokens: list[str], cmd: ResolvedCommand) -> lis
     return processed_args
 
 
-def process_command_args(cmd: ResolvedCommand) -> BoundArguments:
-    args, kwargs = extract_kwargs_from_args(cmd.args, cmd.fn_sig, cmd.kwarg_map)
-
-    processed_args = run_positional_preprocessors(args, cmd)
-
-    assert_positional_arg_count_within_bounds(cmd.fn_sig, processed_args)
-
-    cast_args = coerce_bound_args(cmd.fn_sig.bind(*processed_args, **kwargs))
-
-    return cast_args

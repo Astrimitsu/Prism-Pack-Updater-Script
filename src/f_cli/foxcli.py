@@ -3,7 +3,8 @@ from inspect import BoundArguments, Parameter
 
 import error_strings as errstr
 
-from .command_parser import ResolvedCommand, get_command, process_command_args
+from .coercion import process_command_args
+from .command_parser import ResolvedCommand
 from .commandtrie import TrieNode, build_command_trie
 from .exception_classes import CommandNotExist, InvalidCommandArgCount
 from .shell_utils import clean_input, shell_input, strip_script_name
@@ -53,7 +54,7 @@ class FoxCLI:
             else:
                 tokens = clean_input(shell_input(prompt()))
 
-            cmd = get_command(self._trie, tokens)
+            cmd = self.get_command(tokens)
 
             bound_args: BoundArguments = process_command_args(cmd)
 
@@ -66,3 +67,31 @@ class FoxCLI:
         except InvalidCommandArgCount as e:
             print(e)
             print(cmd.help)
+
+    def get_command(self, tokens: list[str]) -> ResolvedCommand:
+        if not self._trie: 
+            raise ValueError("Trie not inita")
+        node: TrieNode = self._trie
+        args_starting_index: int = 0
+
+        for token in tokens:
+            if token not in node.subcommands:
+                break
+            node = node.subcommands[token]
+            args_starting_index += 1
+
+        if node.fn is None or node.fn_sig is None:
+            cmd_path = " ".join(tokens[:args_starting_index])
+            raise CommandNotExist(errstr.ERR_COMMAND_NONEXISTENT.format(cmd_path))
+
+        args = tuple(tokens[args_starting_index:])
+
+        return ResolvedCommand(
+            node.fn,
+            node.fn_sig,
+            args,
+            node.kwarg_map,
+            node.help,
+            node.preprocessor_fn,
+            node.preprocessor_args,
+        )

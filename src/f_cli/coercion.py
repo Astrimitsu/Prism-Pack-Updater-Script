@@ -2,6 +2,10 @@ from inspect import BoundArguments, Parameter
 from types import UnionType
 from typing import get_args
 
+from f_cli.command_parser import ResolvedCommand, run_positional_preprocessors
+from f_cli.kwarg_extractor import extract_kwargs_from_args
+from f_cli.sig_utils import assert_positional_arg_count_within_bounds
+
 
 def coerce_arg_from_param(arg: object, param: Parameter) -> object:
     annotation: type | UnionType = param.annotation
@@ -30,3 +34,15 @@ def coerce_bound_args(bound_args: BoundArguments) -> BoundArguments:
         for name, arg in bound_args.arguments.items()
     }
     return BoundArguments(bound_args.signature, cast_args)
+
+
+def process_command_args(cmd: ResolvedCommand) -> BoundArguments:
+    args, kwargs = extract_kwargs_from_args(cmd.args, cmd.fn_sig, cmd.kwarg_map)
+
+    processed_args = run_positional_preprocessors(args, cmd)
+
+    assert_positional_arg_count_within_bounds(cmd.fn_sig, processed_args)
+
+    cast_args = coerce_bound_args(cmd.fn_sig.bind(*processed_args, **kwargs))
+
+    return cast_args
