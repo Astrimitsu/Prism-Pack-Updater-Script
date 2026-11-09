@@ -2,7 +2,7 @@ from collections import defaultdict
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field, replace
 from inspect import Signature, getmembers_static, isfunction, ismethod, signature
-from typing import Any, Protocol
+from typing import Any
 
 
 @dataclass(frozen=True)

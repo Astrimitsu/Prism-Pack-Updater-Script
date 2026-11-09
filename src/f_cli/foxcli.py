@@ -70,7 +70,7 @@ class FoxCLI:
 
     def get_command(self, tokens: list[str]) -> ResolvedCommand:
         if not self._trie: 
-            raise ValueError("Trie not inita")
+            raise ValueError("Trie not initialized")
         node: TrieNode = self._trie
         args_starting_index: int = 0
 

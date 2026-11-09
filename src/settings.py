@@ -53,8 +53,7 @@ class Settings:
         ("instance", "add"),
         "instance add <path> [alias]\nAdds a new instance, alias defaults to folder name if not specified. Path must be surrounded by quotes.",
     )
-    def add_instance(self, raw_path: str, alias: str | None = None) -> None:
-        path = Path(raw_path)
+    def add_instance(self, path: Path, alias: str | None = None) -> None:
         if not alias:
             alias = path.stem
         if self.instance_exists(alias):
