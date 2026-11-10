@@ -1,4 +1,5 @@
-from collections.abc import Callable, Iterator
+from collections import deque
+from collections.abc import Callable
 from inspect import BoundArguments, Parameter
 
 import error_strings as errstr
@@ -13,7 +14,7 @@ from .shell_utils import clean_input, shell_input, strip_script_name
 class FoxCLI:
     def __init__(self) -> None:
         self._trie: TrieNode | None = None
-        self.coercion_fn: Callable[[Iterator[str], Parameter], object] | None = None
+        self.coercion_fn: Callable[[deque[object], Parameter], object] | None = None
         self._registered_objects: set[object] = set()
         self._registered_types: set[type] = set()
 
@@ -56,7 +57,7 @@ class FoxCLI:
 
             cmd = self.get_command(tokens)
 
-            bound_args: BoundArguments = process_command_args(cmd)
+            bound_args: BoundArguments = process_command_args(cmd, self.coercion_fn)
 
             command_return: object = cmd.fn(*bound_args.args, **bound_args.kwargs)
 
