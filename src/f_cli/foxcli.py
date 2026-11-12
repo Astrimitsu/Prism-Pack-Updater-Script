@@ -7,7 +7,7 @@ import error_strings as errstr
 from .coercion import process_command_args
 from .command_parser import ResolvedCommand
 from .commandtrie import TrieNode, build_command_trie
-from .exception_classes import CommandNotExist, InvalidCommandArgCount
+from .exception_classes import CoercionError, CommandNotExist, InvalidCommandArgCount
 from .shell_utils import clean_input, shell_input, strip_script_name
 
 
@@ -65,7 +65,7 @@ class FoxCLI:
 
         except CommandNotExist as e:
             print(e)
-        except InvalidCommandArgCount as e:
+        except (InvalidCommandArgCount, CoercionError) as e:
             print(e)
             print(cmd.help)
 

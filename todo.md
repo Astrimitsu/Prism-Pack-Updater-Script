@@ -1,3 +1,3 @@
-handle primitive types in type coercion
+docstrings
 
-add custom type coercion fn support
+unit tests :(
