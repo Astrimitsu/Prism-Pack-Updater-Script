@@ -12,32 +12,37 @@ from .shell_utils import clean_input, shell_input, strip_script_name
 
 
 class FoxCLI:
-    def __init__(self) -> None:
+    def __init__(self, *command_objects: object) -> None:
         self._trie: TrieNode | None = None
         self.coercion_fn: Callable[[deque[object], Parameter], object] | None = None
         self._registered_objects: set[object] = set()
         self._registered_types: set[type] = set()
+        self.register(*command_objects)
 
-    def register(self, obj: object) -> None:
-        if obj in self._registered_objects:
-            return
+    def register(self, *command_objects: object) -> None:
+        for obj in command_objects:
+            if obj in self._registered_objects:
+                continue
+            if type(obj) in self._registered_types:
+                raise ValueError(
+                    errstr.ERR_OBJECT_ALREADY_REGISTERED.format(type(obj).__name__)
+                )
+            
+        for obj in command_objects:
+            self._registered_objects.add(obj)
+            self._registered_types.add(type(obj))
+        self._rebuild_trie()
 
-        if type(obj) in self._registered_types:
-            raise ValueError(
-                errstr.ERR_OBJECT_ALREADY_REGISTERED.format(obj.__class__.__name__)
-            )
+    def deregister(self, *command_objects: object) -> None:
+        for obj in command_objects:
+            if obj not in self._registered_objects:
+                continue
 
-        self._registered_objects.add(obj)
-        self._registered_types.add(type(obj))
+            self._registered_objects.remove(obj)
+            self._registered_types.remove(type(obj))
+        self._rebuild_trie()
 
-    def deregister(self, obj) -> None:
-        if obj not in self._registered_objects:
-            return
-
-        self._registered_objects.remove(obj)
-        self._registered_types.remove(type(obj))
-
-    def build(self) -> None:
+    def _rebuild_trie(self) -> None:
         self._trie = build_command_trie(self._registered_objects)
 
     def run(
@@ -70,7 +75,7 @@ class FoxCLI:
             print(cmd.help)
 
     def get_command(self, tokens: list[str]) -> ResolvedCommand:
-        if not self._trie: 
+        if not self._trie:
             raise ValueError("Trie not initialized")
         node: TrieNode = self._trie
         args_starting_index: int = 0

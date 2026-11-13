@@ -29,7 +29,7 @@ def coerce_arg_from_param(arg: object, param: Parameter) -> object:
     if isinstance(coerced_arg, annotations):
         return coerced_arg
 
-    return default_constructor(coerced_arg)
+    return default_constructor(arg)
 
 
 def get_param_types(annotation: type | UnionType) -> tuple[type, ...]:
@@ -91,7 +91,9 @@ def coerce_bound_args(bound_args: BoundArguments) -> BoundArguments:
 
 
 def run_user_coercion(
-    args: list[str], cmd: ResolvedCommand, user_coercion: Callable
+    args: list[str],
+    cmd: ResolvedCommand,
+    user_coercion: Callable[[deque[object], Parameter], object],
 ) -> list[object]:
     token_stream: deque = deque(args)
     coerced_args: list[object] = []
@@ -99,7 +101,7 @@ def run_user_coercion(
         for param in cmd.fn_sig.parameters.values():
             if not token_stream:
                 break
-            coerced_args.append(user_coercion(param, token_stream))
+            coerced_args.append(user_coercion(token_stream, param))
     except IndexError:
         raise InvalidCommandArgCount(err.ERR_INVALID_COMMAND_ARGCOUNT)
 
