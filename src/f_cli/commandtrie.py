@@ -1,8 +1,8 @@
 from collections import defaultdict
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from inspect import Signature, getmembers_static, isfunction, ismethod, signature
-from typing import Any
+from typing import Any, Protocol
 
 
 @dataclass(frozen=True)
@@ -11,7 +11,7 @@ class CommandMetadata:
     help: str = ""
     kwarg_map: frozendict[str, str] = field(default_factory=frozendict)
     preprocessor_fn: tuple[Callable, ...] = field(default_factory=tuple)
-    preprocessor_args: tuple[tuple[object], ...] = field(default_factory=tuple)
+    preprocessor_args: tuple[tuple[object, ...], ...] = field(default_factory=tuple)
 
     def trienode_properties(self) -> Iterator[tuple[str, object]]:
         yield from ((k, v) for k, v in vars(self).items() if k != "path")
@@ -61,33 +61,72 @@ class TrieNode:
     def __setattr__(self, key, value):
         if getattr(self, "_frozen", False):
             raise AttributeError(f"Cannot modify frozen {self.__class__.__name__}")
-        super().__setattr__(key, value)
+        object.__setattr__(self, key, value)
 
     def __delattr__(self, name: str) -> None:
         if getattr(self, "_frozen", False):
             raise AttributeError(f"Cannot modify frozen {self.__class__.__name__}")
-        super().__delattr__(name)
+        object.__delattr__(self, name)
 
 
-def namespace(path: tuple[str, ...], help: str = "") -> Callable:
+def namespace(path: Sequence[str], help: str = "") -> Callable:
+    """Defines a command namespace for a container class.
+
+    The decorated class is stamped with a _foxcli_command_metadata property,
+    prepending all commands within the class with the specified path.
+
+    Note: Using a namespace is optional; container classes can be
+    registered without one.
+
+    Args:
+        path: A sequence of strings, with each index representing a subcommand.
+        help: Help text to be associated with the namespace.
+    """
+
     def decorator(cls: type):
-        metadata: CommandMetadata = CommandMetadata(path, help)
+        metadata: CommandMetadata = CommandMetadata(tuple(path), help)
         cls._foxcli_command_metadata = metadata
         return cls
 
     return decorator
 
+class PreprocessorFN(Protocol):
+    def __call__(self, args_to_process: list[Any], *args: object) -> list[object]: ...
 
 def command(
-    path: tuple[str, ...],
+    path: Sequence[str],
     help: str = "",
-    kwarg_map: frozendict[str, str] = frozendict(),
-    preprocessor_fn: tuple[Callable, ...] = (),
-    preprocessor_args: tuple[tuple[object], ...] = (),
+    kwarg_map: Mapping[str, str] = frozendict(),
+    preprocessor_fn: Sequence[PreprocessorFN] = (),
+    preprocessor_args: Sequence[Sequence[object]] = (),
 ) -> Callable:
+    """Registers a method as a CLI command.
+
+    The decorated callable is stamped with a _foxcli_command_metadata property.
+    Container classes containing these methods can then be passed to a
+    FoxCLI object to build the command trie.
+
+    Note: All decorated methods must live inside a container class;
+    module-level loose functions are unsupported.
+
+    Args:
+        path: A sequence of strings, where each element represents a subcommand level.
+        help: Help text to be associated with the command.
+        kwarg_map: Optional mapping to translate CLI flags to keyword arguments.
+            If omitted, flags match keyword argument names exactly.
+        preprocessor_fn: A sequence of callables that modify the raw input
+            arguments before parsing, returning the updated list.
+        preprocessor_args: A sequence of argument sequences, where each
+            subsequence corresponds to the arguments passed to its respective preprocessor.
+    """
+
     def decorator(fn: Callable) -> Callable:
         metadata: CommandMetadata = CommandMetadata(
-            path, help, kwarg_map, preprocessor_fn, preprocessor_args
+            tuple(path),
+            help,
+            frozendict(kwarg_map),
+            tuple(preprocessor_fn),
+            tuple(tuple(fn_args) for fn_args in preprocessor_args),
         )
         fn._foxcli_command_metadata = metadata  # type: ignore[attr-defined]
         return fn
