@@ -90,8 +90,10 @@ def namespace(path: Sequence[str], help: str = "") -> Callable:
 
     return decorator
 
+
 class PreprocessorFN(Protocol):
     def __call__(self, args_to_process: list[Any], *args: object) -> list[object]: ...
+
 
 def command(
     path: Sequence[str],
@@ -100,7 +102,7 @@ def command(
     preprocessor_fn: Sequence[PreprocessorFN] = (),
     preprocessor_args: Sequence[Sequence[object]] = (),
 ) -> Callable:
-    """Registers a method as a CLI command.
+    """Registers a function as a CLI command.
 
     The decorated callable is stamped with a _foxcli_command_metadata property.
     Container classes containing these methods can then be passed to a
@@ -137,24 +139,36 @@ def command(
 def build_command_trie(command_containers: set[Any]) -> TrieNode:
     trie_root: TrieNode = TrieNode()
     for container in command_containers:
-        container_namespace: CommandMetadata | None = None
-
-        if hasattr(container, "_foxcli_command_metadata"):
-            container_namespace = container._foxcli_command_metadata
-            trie_root.add_command_to_trie(None, container._foxcli_command_metadata)
-
-        for _, member in getmembers_static(
-            container, predicate=lambda m: isfunction(m) or ismethod(m)
-        ):
-            if hasattr(member, "_foxcli_command_metadata"):
-                metadata: CommandMetadata = member._foxcli_command_metadata
-
-                if container_namespace:
-                    metadata = replace(
-                        metadata, path=container_namespace.path + metadata.path
-                    )
-                trie_root.add_command_to_trie(member, metadata)
-
+        _process_container(container, trie_root)
+        _process_container_functions(container, trie_root)
+        
     trie_root._deepfreeze()
 
     return trie_root
+
+
+def _process_container(container: Any, trie_root: TrieNode) -> None:
+    if hasattr(container, "_foxcli_command_metadata"):
+        trie_root.add_command_to_trie(None, container._foxcli_command_metadata)
+
+
+def _bind_method(fn: Callable, owner: Any):
+    return fn if isinstance(owner, type) else fn.__get__(owner, type(owner))
+
+
+def _process_container_functions(container: Any, trie_root: TrieNode) -> None:
+    for _, member in getmembers_static(
+        container, predicate=lambda m: isfunction(m) or ismethod(m)
+    ):
+        if not hasattr(member, "_foxcli_command_metadata"):
+            continue
+
+        metadata: CommandMetadata = member._foxcli_command_metadata
+
+        bound_fn = _bind_method(member, container)
+
+        if hasattr(container, "_foxcli_command_metadata"):
+            container_metadata: CommandMetadata = container._foxcli_command_metadata
+            metadata = replace(metadata, path=container_metadata.path + metadata.path)
+
+        trie_root.add_command_to_trie(bound_fn, metadata)
