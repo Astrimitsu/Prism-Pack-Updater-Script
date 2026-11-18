@@ -12,9 +12,7 @@ if sys.version_info < (3, 15, 0):  # noqa: UP036
 
 def main() -> None:
     settings = Settings.from_disk(Path("settings.json"))
-    cli: FoxCLI = FoxCLI()
-    cli.register(settings)
-    cli.build()
+    cli: FoxCLI = FoxCLI(settings)
     cli.run(prompt=lambda: settings.instance)
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 from collections import defaultdict
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field, replace
-from inspect import Signature, getmembers_static, isfunction, ismethod, signature
+from inspect import Signature, getmembers_static, isroutine, signature
 from typing import Any, Protocol
 
 
@@ -15,6 +15,9 @@ class CommandMetadata:
 
     def trienode_properties(self) -> Iterator[tuple[str, object]]:
         yield from ((k, v) for k, v in vars(self).items() if k != "path")
+
+
+command_registry: dict[Callable, CommandMetadata] = {}
 
 
 class TrieNode:
@@ -72,7 +75,7 @@ class TrieNode:
 def namespace(path: Sequence[str], help: str = "") -> Callable:
     """Defines a command namespace for a container class.
 
-    The decorated class is stamped with a _foxcli_command_metadata property,
+    The decorated class is added to an internal command registry,
     prepending all commands within the class with the specified path.
 
     Note: Using a namespace is optional; container classes can be
@@ -84,15 +87,21 @@ def namespace(path: Sequence[str], help: str = "") -> Callable:
     """
 
     def decorator(cls: type):
+        if cls in command_registry:
+            raise ValueError(f"Class {cls.__name__} is already registered")
         metadata: CommandMetadata = CommandMetadata(tuple(path), help)
-        cls._foxcli_command_metadata = metadata
+        command_registry[cls] = metadata
         return cls
 
     return decorator
 
 
 class PreprocessorFN(Protocol):
-    def __call__(self, args_to_process: list[Any], *args: object) -> list[object]: ...
+    """```python
+    def __call__(args_to_process: list[Any], *args: object) -> list[Any]: ...
+    ```"""
+
+    def __call__(self, args_to_process: list[Any], *args: object) -> list[Any]: ...
 
 
 def command(
@@ -104,12 +113,9 @@ def command(
 ) -> Callable:
     """Registers a function as a CLI command.
 
-    The decorated callable is stamped with a _foxcli_command_metadata property.
-    Container classes containing these methods can then be passed to a
+    The decorated callable is added to an internal command registry. 
+    Classes, instances of, or modules containing these methods can then be passed to a
     FoxCLI object to build the command trie.
-
-    Note: All decorated methods must live inside a container class;
-    module-level loose functions are unsupported.
 
     Args:
         path: A sequence of strings, where each element represents a subcommand level.
@@ -130,10 +136,47 @@ def command(
             tuple(preprocessor_fn),
             tuple(tuple(fn_args) for fn_args in preprocessor_args),
         )
-        fn._foxcli_command_metadata = metadata  # type: ignore[attr-defined]
+        unwrapped = _unwrap_function(fn)
+        if unwrapped in command_registry:
+            raise ValueError(f"Function {unwrapped!r} is already registered")
+        command_registry[unwrapped] = metadata
         return fn
 
     return decorator
+
+
+def contains_command(fn: Callable) -> bool:
+    if fn in command_registry:
+        return True
+    elif hasattr(fn, "__func__") or hasattr(fn, "__wrapped__"):
+        return _unwrap_function(fn) in command_registry
+    return False
+
+
+def _unwrap_function(fn: Callable) -> Callable:
+    """(Hopefully) cleanly handles functions inside of descriptor objects
+    (ie: @classmethod, @staticmethod) to extract the function inside."""
+    if isroutine(fn):
+        return fn
+
+    unwrapped: Any = fn
+    seen = set()
+    while True:
+        if unwrapped in seen:
+            raise ValueError(f"Circular reference detected while unwrapping {fn!r}")
+        seen.add(unwrapped)
+
+        if hasattr(unwrapped, "__func__"):
+            unwrapped = unwrapped.__func__
+        elif hasattr(unwrapped, "__wrapped__"):
+            unwrapped = unwrapped.__wrapped__
+        else:
+            break
+
+    return unwrapped
+
+def _bind_method(fn: Callable, owner: Any):
+    return fn if isinstance(owner, type) else fn.__get__(owner, type(owner))
 
 
 def build_command_trie(command_containers: set[Any]) -> TrieNode:
@@ -141,34 +184,26 @@ def build_command_trie(command_containers: set[Any]) -> TrieNode:
     for container in command_containers:
         _process_container(container, trie_root)
         _process_container_functions(container, trie_root)
-        
+
     trie_root._deepfreeze()
 
     return trie_root
 
 
 def _process_container(container: Any, trie_root: TrieNode) -> None:
-    if hasattr(container, "_foxcli_command_metadata"):
-        trie_root.add_command_to_trie(None, container._foxcli_command_metadata)
-
-
-def _bind_method(fn: Callable, owner: Any):
-    return fn if isinstance(owner, type) else fn.__get__(owner, type(owner))
-
+    if container in command_registry:
+        trie_root.add_command_to_trie(None, command_registry[container])
 
 def _process_container_functions(container: Any, trie_root: TrieNode) -> None:
-    for _, member in getmembers_static(
-        container, predicate=lambda m: isfunction(m) or ismethod(m)
-    ):
-        if not hasattr(member, "_foxcli_command_metadata"):
-            continue
-
-        metadata: CommandMetadata = member._foxcli_command_metadata
+    for _, member in getmembers_static(container, predicate=contains_command):
+        fn: Callable = _unwrap_function(member)
+        
+        metadata: CommandMetadata = command_registry[fn]
 
         bound_fn = _bind_method(member, container)
 
-        if hasattr(container, "_foxcli_command_metadata"):
-            container_metadata: CommandMetadata = container._foxcli_command_metadata
+        if container in command_registry:
+            container_metadata: CommandMetadata = command_registry[container]
             metadata = replace(metadata, path=container_metadata.path + metadata.path)
 
         trie_root.add_command_to_trie(bound_fn, metadata)
