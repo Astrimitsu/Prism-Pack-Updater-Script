@@ -1,17 +1,26 @@
 from collections import defaultdict
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field, replace
-from inspect import Signature, getmembers_static, isroutine, signature
+from functools import partial, partialmethod
+from inspect import Signature, getdoc, getmembers_static, signature
 from typing import Any, Protocol
+
+
+class PreprocessorFN(Protocol):
+    """```python
+    def __call__(args_to_process: list[Any]) -> list[Any]: ...
+    ```"""
+
+    def __call__(self, args_to_process: list[Any]) -> list[Any]: ...
 
 
 @dataclass(frozen=True)
 class CommandMetadata:
     path: tuple[str, ...]
-    help: str = ""
+    desc: str | None
+    help: str | None
     kwarg_map: frozendict[str, str] = field(default_factory=frozendict)
-    preprocessor_fn: tuple[Callable, ...] = field(default_factory=tuple)
-    preprocessor_args: tuple[tuple[object, ...], ...] = field(default_factory=tuple)
+    preprocessor_fn: tuple[PreprocessorFN, ...] = field(default_factory=tuple)
 
     def trienode_properties(self) -> Iterator[tuple[str, object]]:
         yield from ((k, v) for k, v in vars(self).items() if k != "path")
@@ -24,10 +33,10 @@ class TrieNode:
     def __init__(
         self,
         fn: Callable | None = None,
-        help: str = "",
+        desc: str | None = None,
+        help: str | None = None,
         kwarg_map: frozendict[str, str] = frozendict(),
         preprocessor_fn: tuple[Callable, ...] | None = None,
-        preprocessor_args: tuple[tuple, ...] | None = None,
     ) -> None:
         self.subcommands: defaultdict[str, TrieNode] | frozendict[str, TrieNode] = (
             defaultdict(TrieNode)
@@ -35,12 +44,10 @@ class TrieNode:
         self.fn: Callable | None = fn
         self.fn_sig: Signature | None = signature(fn) if fn else None
         self.kwarg_map: frozendict[str, str] = kwarg_map
-        self.help: str = help
+        self.desc : str | None = desc
+        self.help: str | None = help
         self.preprocessor_fn: tuple[Callable, ...] = (
             preprocessor_fn if preprocessor_fn else ()
-        )
-        self.preprocessor_args: tuple[tuple[Any], ...] = (
-            preprocessor_args if preprocessor_args else ()
         )
         self._frozen = False
 
@@ -72,7 +79,22 @@ class TrieNode:
         object.__delattr__(self, name)
 
 
-def namespace(path: Sequence[str], help: str = "") -> Callable:
+def _parse_helptext(
+    obj: object, desc: str | None, help: str | None
+) -> tuple[str | None, str | None]:
+    text: str | None = help or getdoc(obj)
+    if not text:
+        return desc or None, None
+
+    cmd_desc: str | None = desc or text.split("\n")[0]
+    cmd_help: str | None = text
+
+    return cmd_desc, cmd_help
+
+
+def namespace(
+    path: Sequence[str], *, desc: str | None = None, help: str | None = None
+) -> Callable:
     """Defines a command namespace for a container class.
 
     The decorated class is added to an internal command registry,
@@ -83,62 +105,63 @@ def namespace(path: Sequence[str], help: str = "") -> Callable:
 
     Args:
         path: A sequence of strings, with each index representing a subcommand.
+        desc: A short description of the command. 
+          Pulled from docstring if not provided, if the class has one.
         help: Help text to be associated with the namespace.
+          Pulled from docstring if not provided, if the class has one.
+
     """
 
     def decorator(cls: type):
         if cls in command_registry:
             raise ValueError(f"Class {cls.__name__} is already registered")
-        metadata: CommandMetadata = CommandMetadata(tuple(path), help)
+
+        cmd_desc, cmd_help = _parse_helptext(cls, desc, help)
+        metadata: CommandMetadata = CommandMetadata(tuple(path), cmd_desc, cmd_help)
         command_registry[cls] = metadata
         return cls
 
     return decorator
 
-
-class PreprocessorFN(Protocol):
-    """```python
-    def __call__(args_to_process: list[Any], *args: object) -> list[Any]: ...
-    ```"""
-
-    def __call__(self, args_to_process: list[Any], *args: object) -> list[Any]: ...
-
-
 def command(
     path: Sequence[str],
-    help: str = "",
+    *,
+    desc: str | None = None,
+    help: str | None = None,
     kwarg_map: Mapping[str, str] = frozendict(),
     preprocessor_fn: Sequence[PreprocessorFN] = (),
-    preprocessor_args: Sequence[Sequence[object]] = (),
 ) -> Callable:
     """Registers a function as a CLI command.
 
-    The decorated callable is added to an internal command registry. 
+    The decorated callable is added to an internal command registry.
     Classes, instances of, or modules containing these methods can then be passed to a
     FoxCLI object to build the command trie.
 
     Args:
         path: A sequence of strings, where each element represents a subcommand level.
-        help: Help text to be associated with the command.
+        desc: A short description of the command. 
+          Pulled from docstring if not provided, if the function has one.
+        help: Help text to be associated with the command. 
+          Pulled from docstring if not provided, if the function has one.
         kwarg_map: Optional mapping to translate CLI flags to keyword arguments.
             If omitted, flags match keyword argument names exactly.
         preprocessor_fn: A sequence of callables that modify the raw input
             arguments before parsing, returning the updated list.
-        preprocessor_args: A sequence of argument sequences, where each
-            subsequence corresponds to the arguments passed to its respective preprocessor.
     """
 
     def decorator(fn: Callable) -> Callable:
-        metadata: CommandMetadata = CommandMetadata(
-            tuple(path),
-            help,
-            frozendict(kwarg_map),
-            tuple(preprocessor_fn),
-            tuple(tuple(fn_args) for fn_args in preprocessor_args),
-        )
+
         unwrapped = _unwrap_function(fn)
         if unwrapped in command_registry:
             raise ValueError(f"Function {unwrapped!r} is already registered")
+        cmd_desc, cmd_help = _parse_helptext(fn, desc, help)
+        metadata: CommandMetadata = CommandMetadata(
+            tuple(path),
+            cmd_desc,
+            cmd_help,
+            frozendict(kwarg_map),
+            tuple(preprocessor_fn),
+        )
         command_registry[unwrapped] = metadata
         return fn
 
@@ -146,34 +169,31 @@ def command(
 
 
 def contains_command(fn: Callable) -> bool:
-    if fn in command_registry:
-        return True
-    elif hasattr(fn, "__func__") or hasattr(fn, "__wrapped__"):
-        return _unwrap_function(fn) in command_registry
-    return False
+    return _unwrap_function(fn) in command_registry
 
 
 def _unwrap_function(fn: Callable) -> Callable:
     """(Hopefully) cleanly handles functions inside of descriptor objects
     (ie: @classmethod, @staticmethod) to extract the function inside."""
-    if isroutine(fn):
-        return fn
-
     unwrapped: Any = fn
     seen = set()
+
     while True:
-        if unwrapped in seen:
+        if id(unwrapped) in seen:
             raise ValueError(f"Circular reference detected while unwrapping {fn!r}")
-        seen.add(unwrapped)
+        seen.add(id(unwrapped))
 
         if hasattr(unwrapped, "__func__"):
             unwrapped = unwrapped.__func__
         elif hasattr(unwrapped, "__wrapped__"):
             unwrapped = unwrapped.__wrapped__
+        elif isinstance(unwrapped, (partial, partialmethod)):
+            unwrapped = unwrapped.func
         else:
             break
 
     return unwrapped
+
 
 def _bind_method(fn: Callable, owner: Any):
     return fn if isinstance(owner, type) else fn.__get__(owner, type(owner))
@@ -194,10 +214,11 @@ def _process_container(container: Any, trie_root: TrieNode) -> None:
     if container in command_registry:
         trie_root.add_command_to_trie(None, command_registry[container])
 
+
 def _process_container_functions(container: Any, trie_root: TrieNode) -> None:
     for _, member in getmembers_static(container, predicate=contains_command):
         fn: Callable = _unwrap_function(member)
-        
+
         metadata: CommandMetadata = command_registry[fn]
 
         bound_fn = _bind_method(member, container)

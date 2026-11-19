@@ -152,5 +152,4 @@ class FoxCLI:
             node.kwarg_map,
             node.help,
             node.preprocessor_fn,
-            node.preprocessor_args,
         )
