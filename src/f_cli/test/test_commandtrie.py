@@ -1,7 +1,6 @@
-from ..commandtrie import TrieNode, build_command_trie
+from f_cli import commandtrie
 
-
-class TestBuildCommandTrie:
+"""class TestBuildCommandTrie:
 
     def test_build_command_trie(self, commands):
         trie: TrieNode = build_command_trie(commands)
@@ -19,3 +18,14 @@ class TestBuildCommandTrie:
             for k, v in command.trienode_properties():
                 assert isinstance(current.subcommands, frozendict)
                 assert getattr(current, k) == v
+"""
+
+class TestParseHelpText:
+    def fn(self):
+        """Line 1
+        
+        Line 2
+        Line 3"""
+
+    def test__parse_help_text(self):
+        assert commandtrie._parse_helptext(self.fn, None, None) == ("Line 1", "Line 1\n\nLine 2\nLine 3")

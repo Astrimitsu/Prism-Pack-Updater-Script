@@ -2,8 +2,7 @@ from collections import deque
 from collections.abc import Callable
 from inspect import BoundArguments, Parameter
 
-import error_strings as errstr
-
+from . import error_strings as errstr
 from .coercion import process_command_args
 from .command_parser import ResolvedCommand
 from .commandtrie import TrieNode, build_command_trie

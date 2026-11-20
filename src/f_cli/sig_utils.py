@@ -1,9 +1,9 @@
 from collections.abc import Sequence
 from inspect import Parameter, Signature
 
-import error_strings
-from consts import ANY_KWARGS
-from exception_classes import InvalidCommandArgCount
+from . import error_strings
+from .consts import ANY_KWARGS
+from .exception_classes import InvalidCommandArgCount
 
 
 def get_fn_min_max_positional_args(sig: Signature) -> tuple[int, int | None]:

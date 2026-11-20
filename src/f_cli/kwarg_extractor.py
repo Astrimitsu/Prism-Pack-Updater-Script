@@ -1,11 +1,10 @@
 from collections.abc import Iterator, Mapping, Sequence
 from inspect import Signature
 
-import error_strings
-from consts import ANY_KWARGS
-from exception_classes import InvalidCommandArgCount, KwargNotFound
-
-from f_cli.sig_utils import get_function_kwargs
+from . import error_strings
+from .consts import ANY_KWARGS
+from .exception_classes import InvalidCommandArgCount, KwargNotFound
+from .sig_utils import get_function_kwargs
 
 
 def extract_kwargs_from_args(

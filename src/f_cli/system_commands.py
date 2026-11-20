@@ -1,4 +1,4 @@
-from commandtrie import command
+from .commandtrie import command
 
 
 class SystemCommands:
