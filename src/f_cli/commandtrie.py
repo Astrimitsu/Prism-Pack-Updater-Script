@@ -3,15 +3,7 @@ from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from functools import partial, partialmethod
 from inspect import Signature, getdoc, getmembers_static, signature
-from typing import Any, Protocol
-
-
-class PreprocessorFN(Protocol):
-    """```python
-    def __call__(args_to_process: list[Any]) -> list[Any]: ...
-    ```"""
-
-    def __call__(self, args_to_process: list[Any]) -> list[Any]: ...
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -20,7 +12,9 @@ class CommandMetadata:
     desc: str | None
     help: str | None
     kwarg_map: frozendict[str, str] = field(default_factory=frozendict)
-    preprocessor_fn: tuple[PreprocessorFN, ...] = field(default_factory=tuple)
+    preprocessor_fn: tuple[Callable[[list[Any]], list[Any]], ...] = field(
+        default_factory=tuple
+    )
 
     def trienode_properties(self) -> Iterator[tuple[str, object]]:
         yield from ((k, v) for k, v in vars(self).items() if k != "path")
@@ -44,7 +38,7 @@ class TrieNode:
         self.fn: Callable | None = fn
         self.fn_sig: Signature | None = signature(fn) if fn else None
         self.kwarg_map: frozendict[str, str] = kwarg_map
-        self.desc : str | None = desc
+        self.desc: str | None = desc
         self.help: str | None = help
         self.preprocessor_fn: tuple[Callable, ...] = (
             preprocessor_fn if preprocessor_fn else ()
@@ -105,7 +99,7 @@ def namespace(
 
     Args:
         path: A sequence of strings, with each index representing a subcommand.
-        desc: A short description of the command. 
+        desc: A short description of the command.
           Pulled from docstring if not provided, if the class has one.
         help: Help text to be associated with the namespace.
           Pulled from docstring if not provided, if the class has one.
@@ -123,14 +117,16 @@ def namespace(
 
     return decorator
 
-def command(
+type FunctionOrDescriptor = Callable[..., Any] | classmethod[Any, Any, Any] | staticmethod[Any, Any]
+
+def command[F: FunctionOrDescriptor](
     path: Sequence[str],
     *,
     desc: str | None = None,
     help: str | None = None,
     kwarg_map: Mapping[str, str] = frozendict(),
-    preprocessor_fn: Sequence[PreprocessorFN] = (),
-) -> Callable:
+    preprocessor_fn: Sequence[Callable[[list[Any]], list[Any]]] = (),
+) -> Callable[[F], F]:
     """Registers a function as a CLI command.
 
     The decorated callable is added to an internal command registry.
@@ -139,9 +135,9 @@ def command(
 
     Args:
         path: A sequence of strings, where each element represents a subcommand level.
-        desc: A short description of the command. 
+        desc: A short description of the command.
           Pulled from docstring if not provided, if the function has one.
-        help: Help text to be associated with the command. 
+        help: Help text to be associated with the command.
           Pulled from docstring if not provided, if the function has one.
         kwarg_map: Optional mapping to translate CLI flags to keyword arguments.
             If omitted, flags match keyword argument names exactly.
@@ -149,12 +145,14 @@ def command(
             arguments before parsing, returning the updated list.
     """
 
-    def decorator(fn: Callable) -> Callable:
+    def decorator(fn: F) -> F:
 
         unwrapped = _unwrap_function(fn)
         if unwrapped in command_registry:
             raise ValueError(f"Function {unwrapped!r} is already registered")
+        
         cmd_desc, cmd_help = _parse_helptext(fn, desc, help)
+
         metadata: CommandMetadata = CommandMetadata(
             tuple(path),
             cmd_desc,
@@ -162,6 +160,7 @@ def command(
             frozendict(kwarg_map),
             tuple(preprocessor_fn),
         )
+
         command_registry[unwrapped] = metadata
         return fn
 
@@ -172,7 +171,7 @@ def contains_command(fn: Callable) -> bool:
     return _unwrap_function(fn) in command_registry
 
 
-def _unwrap_function(fn: Callable) -> Callable:
+def _unwrap_function(fn: FunctionOrDescriptor) -> Callable:
     """(Hopefully) cleanly handles functions inside of descriptor objects
     (ie: @classmethod, @staticmethod) to extract the function inside."""
     unwrapped: Any = fn
