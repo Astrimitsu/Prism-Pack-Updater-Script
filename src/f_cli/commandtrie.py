@@ -195,6 +195,8 @@ def _unwrap_function(fn: FunctionOrDescriptor) -> Callable:
 
 
 def _bind_method(fn: Callable, owner: Any):
+    if not hasattr(fn, "__get__"):
+        return fn
     return fn if isinstance(owner, type) else fn.__get__(owner, type(owner))
 
 
