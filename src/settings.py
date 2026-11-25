@@ -24,8 +24,9 @@ class Settings:
         except FileNotFoundError:
             return Settings()
 
-    @command(("instance",), "instance\nDisplay all active instances")
+    @command(("instance",))
     def get_instances(self):
+        """Display all active instances"""
         return [instance for instance in self._config]
 
     def instance_exists(self, alias: str) -> bool:

@@ -194,10 +194,14 @@ def _unwrap_function(fn: FunctionOrDescriptor) -> Callable:
     return unwrapped
 
 
-def _bind_method(fn: Callable, owner: Any):
-    if not hasattr(fn, "__get__"):
+def _bind_method(fn: Callable, instance: Any):
+    if not hasattr(fn, "__get__") or instance is None:
         return fn
-    return fn if isinstance(owner, type) else fn.__get__(owner, type(owner))
+
+    cls = instance if isinstance(instance, type) else type(instance)
+    if isinstance(instance, type) and not isinstance(fn, classmethod):
+        return fn 
+    return fn.__get__(instance, cls)
 
 
 def build_command_trie(command_containers: set[Any]) -> TrieNode:

@@ -5,7 +5,7 @@ from inspect import BoundArguments, Parameter
 from . import error_strings as errstr
 from .coercion import process_command_args
 from .command_parser import ResolvedCommand
-from .ct import TrieNode, build_command_trie
+from .commandtrie import TrieNode, build_command_trie
 from .exception_classes import CoercionError, CommandNotExist, InvalidCommandArgCount
 from .shell_utils import clean_input, shell_input, strip_script_name
 

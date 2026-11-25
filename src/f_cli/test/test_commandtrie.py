@@ -38,9 +38,7 @@ class TestParseHelpText:
     def function_with_no_docstr(self): ...
 
     def test__parse_help_text(self):
-        res = ct._parse_helptext(
-            self.docstring_containing_function, None, None
-        )
+        res = ct._parse_helptext(self.docstring_containing_function, None, None)
         expected = ("Line 1", "Line 1\n\nLine 2\nLine 3")
         assert res == expected
 
@@ -48,9 +46,7 @@ class TestParseHelpText:
         expected = (self.desc, None)
         assert res == expected
 
-        res = ct._parse_helptext(
-            self.function_with_no_docstr, None, self.helptext
-        )
+        res = ct._parse_helptext(self.function_with_no_docstr, None, self.helptext)
         expected = ("line 1 helptext", self.helptext)
         assert res == expected
 
@@ -71,9 +67,7 @@ class TestNamespace:
 
         description = "Dummy Description"
         help_text = "Dummy Description\n\nDummy Help"
-        res = ct.CommandMetadata(
-            ("namespace_part_1", "part_2"), description, help_text
-        )
+        res = ct.CommandMetadata(("namespace_part_1", "part_2"), description, help_text)
 
         assert registry[self.DummyNamespace] == res
 
@@ -110,29 +104,30 @@ class TestCommand:
         assert registry[ct._unwrap_function(self.dummy_function)] == res
 
 
+def dummy_function(x, y):
+    return x + y
+
+
+dummy_partial = partial(dummy_function, 5, 3)
+
+
+def dummy_not_in_command_registry(): ...
+
+
 class TestContainsCommand:
 
     def dummy_function(self):
         return "i am a dummy function"
-
-    def not_in_command_registry(self): ...
 
     def test__contains_command(self, monkeypatch):
         registry = {}
         monkeypatch.setattr(ct, "command_registry", registry)
 
         wrapper = ct.command(["dummy", "function"])
-        wrapper(self.dummy_function)
+        wrapper(dummy_function)
 
-        assert ct.contains_command(self.dummy_function)
-        assert not ct.contains_command(self.not_in_command_registry)
-
-
-def dummy_function(x, y):
-    return x + y
-
-
-dummy_partial = partial(dummy_function, 5, 3)
+        assert ct.contains_command(dummy_function)
+        assert not ct.contains_command(dummy_not_in_command_registry)
 
 
 class DummyClass:
@@ -152,22 +147,40 @@ class TestUnwrapFunction:
 
         assert ct._unwrap_function(dummy_function) is dummy_function
 
+        assert ct._unwrap_function(DummyClass.dummy_method) is DummyClass.dummy_method
+
+        assert ct._unwrap_function(dummy_object.dummy_method) is DummyClass.dummy_method
+
         assert (
-            ct._unwrap_function(DummyClass.dummy_method)
-            is DummyClass.dummy_method
+            ct._unwrap_function(DummyClass.dummy_classmethod)
+            is DummyClass.dummy_classmethod.__func__
         )
 
         assert (
-            ct._unwrap_function(dummy_object.dummy_method)
-            is DummyClass.dummy_method
+            ct._unwrap_function(DummyClass.dummy_staticmethod)
+            is DummyClass.dummy_staticmethod
         )
-
-        assert ct._unwrap_function(DummyClass.dummy_classmethod) is DummyClass.dummy_classmethod.__func__
-
-        assert ct._unwrap_function(DummyClass.dummy_staticmethod) is DummyClass.dummy_staticmethod
 
         assert ct._unwrap_function(dummy_partial) is dummy_function
 
 
 class TestBindMethod:
-    def test_bind_method(self): ...
+    def test_bind_method(self):
+
+        dummy_instance = DummyClass()
+
+        expected = dummy_function
+        res = ct._bind_method(dummy_function, None)
+        assert expected == res
+
+        expected = dummy_instance.dummy_method
+        res = ct._bind_method(DummyClass.__dict__["dummy_method"], dummy_instance)
+        assert expected == res
+
+        expected = dummy_instance.dummy_staticmethod
+        res = ct._bind_method(DummyClass.__dict__["dummy_staticmethod"], dummy_instance)
+        assert expected == res
+
+        expected = dummy_instance.dummy_classmethod
+        res = ct._bind_method(DummyClass.__dict__["dummy_classmethod"], dummy_instance)
+        assert expected == res
