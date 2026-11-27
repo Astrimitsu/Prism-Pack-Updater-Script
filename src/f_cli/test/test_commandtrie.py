@@ -1,6 +1,7 @@
 from functools import partial
 from typing import Any
 
+import pytest
 from f_cli import commandtrie as ct
 
 """class TestBuildCommandTrie:
@@ -184,3 +185,25 @@ class TestBindMethod:
         expected = dummy_instance.dummy_classmethod
         res = ct._bind_method(DummyClass.__dict__["dummy_classmethod"], dummy_instance)
         assert expected == res
+
+
+class TestTrieNode:
+    def test_deepfreeze(self):
+        trie = ct.TrieNode()
+        node_a = trie.subcommands["a"]
+        node_b = trie.subcommands["b"]
+        node_c = trie.subcommands["a"].subcommands["c"]
+        trie._deepfreeze()
+
+        assert trie._frozen
+        assert node_a._frozen
+        assert node_b._frozen
+        assert node_c._frozen
+
+        assert isinstance(node_a.subcommands, frozendict)
+
+        with pytest.raises(AttributeError):
+            node_c.desc = "This should raise an AttributeError."
+
+        with pytest.raises(AttributeError):
+            del node_b.help
