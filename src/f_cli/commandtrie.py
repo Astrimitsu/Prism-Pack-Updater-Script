@@ -50,6 +50,8 @@ class TrieNode:
     ) -> None:
         current: TrieNode = self
         for command_part in metadata.path:
+            if not command_part:
+                raise ValueError()
             current = current.subcommands[command_part]
         for k, v in metadata.trienode_properties():
             setattr(current, k, v)
@@ -110,6 +112,9 @@ def namespace(
         if cls in command_registry:
             raise ValueError(f"Class {cls.__name__} is already registered")
 
+        if not all(path_part.strip() for path_part in path):
+            raise ValueError(f"Command path {path} contains an empty string")
+
         cmd_desc, cmd_help = _parse_helptext(cls, desc, help)
         metadata: CommandMetadata = CommandMetadata(tuple(path), cmd_desc, cmd_help)
         command_registry[cls] = metadata
@@ -150,6 +155,9 @@ def command[F: FunctionOrDescriptor](
         unwrapped = _unwrap_function(fn)
         if unwrapped in command_registry:
             raise ValueError(f"Function {unwrapped!r} is already registered")
+
+        if not any(path_part.strip() for path_part in path):
+            raise ValueError(f"Command path {path} contains an empty string")
         
         cmd_desc, cmd_help = _parse_helptext(fn, desc, help)
 
